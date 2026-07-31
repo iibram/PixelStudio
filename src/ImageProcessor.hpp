@@ -67,7 +67,7 @@ private:
 	 * @brief Represents a pixel in its YUV (+ Alpha channel) values according to the RGBA values
 	 * @note The data structure used during image processing (true grayscale)
 	 */
-	struct Pixel
+	struct alignas(16) Pixel
 	{
 		float Y;	// Y channel = Intensity [0, 1]
 		float U;	// Difference between the B(lue) channel and the Y channel (horizontal) [-U_max, +U_max]
@@ -84,11 +84,12 @@ private:
 		std::vector<Pixel> pxls;		// image data as `Pixel` type
 		int w;							// width of the image
 		int h;							// height of the image
+		bool stableAlpha;				// `true` if all pixels share the same alpha-channel value
 	};
 
 
-	std::vector<Image> images;					// all images currently available of this session
-	std::vector<uint8_t> tempRGBA;				// YUV(+A) -> temporary RGBA data (`stb_data` on the fly)
+	std::vector<Image> images;					// all images currently available in this session
+	std::vector<uint8_t> tempRGBA;				// temporary RGBA data, copied from stb_data (loadImage) or converted by toYUV() (selectImage)
 
 	time_point t_start;							// start time
 	time_point t_end;							// end time

@@ -1,5 +1,7 @@
 #include "ImageProcessor.hpp"
 #include <iostream>
+#include <string>
+#include <format>
 
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
@@ -18,7 +20,7 @@
 ImageProcessor::ImageProcessor() : IDX(0)
 {
 	if (std::filesystem::create_directories(DEFAULT_OUT_PATH))
-		std::cout << "successfully created the default output directory!\n\n";
+		std::cout << "successfully created the default output directory!\n";
 
 	// pre-resizing the `tempRGBA` vector to a massive capacity for 16K UHD (15360 x 8640) resolution RGBA images
 	tempRGBA.resize((15360ULL * 8640ULL << 2));
@@ -39,11 +41,11 @@ void ImageProcessor::loadImage(const char* img_path)
 		t_end = clock::now();
 
 		if (!stb_data)
-			std::cerr << "loading image (<- \"" << img_path << "\"):" << " FAILED!\n";
+			std::cerr << std::format("\nloading image <- \"{}\": -- FAILED! --\n", img_path);
 
 		else
 		{
-			std::cout << "loading image (<- \"" << img_path << "\", " << WIDTH << " x " << HEIGHT << "):" << " SUCCESS!\n";
+			std::cout << std::format("\nloading image <- \"{}\", {} x {}: -- SUCCESS! --\n", img_path, WIDTH, HEIGHT);
 			showDuration("load image");
 
 			uint64_t SIZE = (static_cast<uint64_t>(WIDTH) * HEIGHT) << 2;				// SIZE = data of stb_data -> (r,g,b,a,r,g,b,a...)
@@ -71,6 +73,8 @@ void ImageProcessor::loadImage(const char* img_path)
 			images[IDX].pxls.resize(SIZE >> 2);
 			images[IDX].w = WIDTH;
 			images[IDX].h = HEIGHT;
+
+			std::cout << std::format("> sel image IDX: {:5}\n", IDX);
 
 			toYUV();
 		}
@@ -106,10 +110,10 @@ void ImageProcessor::saveImage(const char* out_path)
 	showDuration("save image");
 
 	if (!success)
-		std::cerr << "saving image (-> \"" << finalPath << "\"):" << " FAILED!\n\n";
+		std::cerr << std::format("saving image -> \"{}\": -- FAILED! --\n", finalPath);
 
 	else
-		std::cout << "saving image (-> \"" << finalPath << "\", " << images[IDX].w << " x " << images[IDX].h << "):" << " SUCCESS!\n\n";
+		std::cout << std::format("saving image -> \"{}\", {} x {}: -- SUCCESS! --\n", finalPath, images[IDX].w, images[IDX].h);
 }
 
 /**
@@ -121,7 +125,7 @@ bool ImageProcessor::selectImage(uint16_t idx)
 	if (idx < images.size())
 	{
 		IDX = idx;
-		std::cout << "images[" << IDX << "]" << " is now selected!\n";
+		std::cout << std::format("\n> sel image IDX: {:5}\n", IDX);
 		toRGBA();
 		return true;
 	}
@@ -251,17 +255,16 @@ void ImageProcessor::printDiffInRGBA(uint16_t oIdx)
 	{
 		if (images[IDX].pxls.size() == images[oIdx].pxls.size())
 		{
-			float R, G, B;
+			t_start = clock::now();
+
 			uint64_t diff = 0;
 			size_t k = 0;
 
-			t_start = clock::now();
-
 			for (Pixel& p : images[oIdx].pxls)
 			{
-				R = p.Y + (p.V * INV_V_max);
-				B = p.Y + (p.U * INV_U_max);
-				G = (p.Y - k_R * R - k_B * B) * INV_k_G;
+				float R = p.Y + (p.V * INV_V_max);
+				float B = p.Y + (p.U * INV_U_max);
+				float G = (p.Y - k_R * R - k_B * B) * INV_k_G;
 
 				if (tempRGBA[k + 0] != quantize(R) || tempRGBA[k + 1] != quantize(G) || tempRGBA[k + 2] != quantize(B) || tempRGBA[k + 3] != quantize(p.A))
 				{
@@ -270,9 +273,9 @@ void ImageProcessor::printDiffInRGBA(uint16_t oIdx)
 				k += 4;
 			}
 			t_end = clock::now();
-			showDuration("pixel comp");
+			showDuration(std::format("comp {:02}:{:02}", IDX, oIdx).c_str());
 
-			std::cout << "num of \u0394 pixels: " << +diff << "\n";
+			std::cout << std::format("num of \u0394 pixels: {:9}\n", diff);
 		}
 		else
 			std::cout << "compare images skipped! (referred image has a different size)\n";
@@ -285,11 +288,18 @@ void ImageProcessor::printDiffInRGBA(uint16_t oIdx)
 // ============================================================  P R I V A T E  ============================================================
 
 /**
- * @brief Converts the image data (RGBA) provided by the "stb" library into the `Pixel` structure (YUV + A).
+ * @brief Converts the current `tempRGBA` data into the `Pixel` data structure (YUV + A). During conversion, the alpha channel values ​​are
+ * checked for variations. Since the pixels in most images share the same alpha value, it makes sense to precalculate the conversion once
+ * and apply this value to every pixel. The key aspect of this approach is the significantly more efficient reuse of `toRGBA()`, which is
+ * called after every image processing step or image selection to display the result immediately on the screen.
  */
 void ImageProcessor::toYUV()
 {
 	t_start = clock::now();
+
+	uint8_t uA0 = tempRGBA[3];
+	float fA0 = static_cast<float>(uA0) * INV_255;
+	bool stableAlpha = true;
 	uint64_t k = 0;
 
 	for (Pixel& p : images[IDX].pxls)
@@ -298,7 +308,14 @@ void ImageProcessor::toYUV()
 		float G = static_cast<float>(tempRGBA[k + 1]) * INV_255;
 		float B = static_cast<float>(tempRGBA[k + 2]) * INV_255;
 
-		p.A = static_cast<float>(tempRGBA[k + 3]) * INV_255;
+		uint8_t currAlpha = tempRGBA[k + 3];
+
+		if (currAlpha == uA0) p.A = fA0;
+		else
+		{
+			p.A = static_cast<float>(currAlpha) * INV_255;
+			stableAlpha = false;
+		}
 
 		p.Y = k_R * R + k_G * G + k_B * B;
 		p.U = k_U * (B - p.Y) * INV_k_B;
@@ -306,18 +323,22 @@ void ImageProcessor::toYUV()
 
 		k += 4;
 	}
+	images[IDX].stableAlpha = stableAlpha;
 	t_end = clock::now();
 
 	showDuration("RGBA > YUV");
 }
 
 /**
- * @brief Converts the image data of type `Pixel` (YUV + A) and writes it directly back into the original `stb_data` structure (RGBA).
+ * @brief Reconstructs the RGBA values by the `Pixel` (YUV + A) type data of the selected image and stores these channel by channel at `tempRGBA`.
  */
 void ImageProcessor::toRGBA()
 {
 	t_start = clock::now();
 	tempRGBA.resize((images[IDX].pxls.size() << 2));
+
+	bool stable = images[IDX].stableAlpha;
+	uint8_t quantAlpha = stable ? quantize(images[IDX].pxls[0].A) : 0;
 	uint64_t k = 0;
 
 	for (Pixel& p : images[IDX].pxls)
@@ -329,7 +350,7 @@ void ImageProcessor::toRGBA()
 		tempRGBA[k + 0] = quantize(R);
 		tempRGBA[k + 1] = quantize(G);
 		tempRGBA[k + 2] = quantize(B);
-		tempRGBA[k + 3] = quantize(p.A);
+		tempRGBA[k + 3] = stable ? quantAlpha : quantize(p.A);
 
 		k += 4;
 	}
@@ -345,10 +366,10 @@ void ImageProcessor::toRGBA()
  */
 uint8_t ImageProcessor::quantize(float f)
 {
-	float clamp = fmaxf(0.0f, fminf(f, 1.0f));		// clamping the range [0, 1] (fminf & fmaxf are intrinsics and super fast)
-	float scale = clamp * 255.0f + 0.5f;			// scaling up to [0, 255] and round commercially
+	f = fmaxf(0.0f, fminf(f, 1.0f));				// clamping the range [0, 1] (fminf & fmaxf are intrinsics and super fast)
+	f = f * 255.0f + 0.5f;							// scaling up to [0, 255] and round commercially (step 1)
 
-	return static_cast<uint8_t>(scale);
+	return static_cast<uint8_t>(f);					// this cast finalizes the commercialy rounding (step 2)
 }
 
 /**
@@ -358,5 +379,5 @@ uint8_t ImageProcessor::quantize(float f)
 void ImageProcessor::showDuration(const char* text)
 {
 	dur = t_end - t_start;
-	std::cout << "\u0394t (" << text << "): " << dur.count() << " ms\n"; // \u0394 = Δ
+	std::cout << std::format("\u0394t ({}): {:9.3f} ms\n", text, dur.count()); // \u0394 = Δ
 }

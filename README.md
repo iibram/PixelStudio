@@ -28,7 +28,7 @@ This repository represents the rock-solid computational core (the backend) of an
 
 	* Optimized via low-level pointer arithmetic, smart memory management, and zero unnecessary vector re-allocations during ad-hoc updates.
 
-	* Transforms a massive **4K image (4226 x 2847)** back into an RGBA display buffer in roughly **32 milliseconds**, ensuring silky-smooth, real-time feedback for the upcoming UI frames.
+	* Transforms a massive **4K image (4226 x 2847)** back into an RGBA display buffer in roughly **20 milliseconds**, ensuring silky-smooth, real-time feedback for the upcoming UI frames.
 
 * **Mathematical Precision:** Designed for near-lossless roundtrip accuracy. Converting from RGBA to YUV and back achieves a 100% reconstruction rate (0.0 pixel delta) under standard mathematical operations.
 
@@ -82,13 +82,13 @@ Clone the repository, drop your test images into the `resources/IN/` folder (or 
 
 ```bash
 # Clone the repository
-git clone https://github.com/iibram/ImageProcessor.git
+git clone https://github.com/iibram/PixelStudio.git
 
 # Change directory
-cd ImageProcessor
+cd PixelStudio
 
 # Compile all source files with high-level performance optimization
-g++ -std=c++20 -O2 src/*.cpp -o main
+g++ -std=c++20 -O2 -march=native -ffast-math src/*.cpp -o main
 
 # Run the engine
 ./main

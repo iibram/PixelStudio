@@ -1813,12 +1813,12 @@ static unsigned char* stbi__convert_format(unsigned char* data, int img_n, int r
 			STBI__CASE(2, 1) { dest[0] = src[0]; } break;
 			STBI__CASE(2, 3) { dest[0] = dest[1] = dest[2] = src[0]; } break;
 			STBI__CASE(2, 4) { dest[0] = dest[1] = dest[2] = src[0]; dest[3] = src[1]; } break;
-			STBI__CASE(3, 4) { dest[0] = src[0];dest[1] = src[1];dest[2] = src[2];dest[3] = 255; } break;
+			STBI__CASE(3, 4) { dest[0] = src[0]; dest[1] = src[1]; dest[2] = src[2]; dest[3] = 255; } break;
 			STBI__CASE(3, 1) { dest[0] = stbi__compute_y(src[0], src[1], src[2]); } break;
 			STBI__CASE(3, 2) { dest[0] = stbi__compute_y(src[0], src[1], src[2]); dest[1] = 255; } break;
 			STBI__CASE(4, 1) { dest[0] = stbi__compute_y(src[0], src[1], src[2]); } break;
 			STBI__CASE(4, 2) { dest[0] = stbi__compute_y(src[0], src[1], src[2]); dest[1] = src[3]; } break;
-			STBI__CASE(4, 3) { dest[0] = src[0];dest[1] = src[1];dest[2] = src[2]; } break;
+			STBI__CASE(4, 3) { dest[0] = src[0]; dest[1] = src[1]; dest[2] = src[2]; } break;
 			default: STBI_ASSERT(0); STBI_FREE(data); STBI_FREE(good); return stbi__errpuc("unsupported", "Unsupported format conversion");
 		}
 		#undef STBI__CASE
@@ -1873,12 +1873,12 @@ static stbi__uint16* stbi__convert_format16(stbi__uint16* data, int img_n, int r
 			STBI__CASE(2, 1) { dest[0] = src[0]; } break;
 			STBI__CASE(2, 3) { dest[0] = dest[1] = dest[2] = src[0]; } break;
 			STBI__CASE(2, 4) { dest[0] = dest[1] = dest[2] = src[0]; dest[3] = src[1]; } break;
-			STBI__CASE(3, 4) { dest[0] = src[0];dest[1] = src[1];dest[2] = src[2];dest[3] = 0xffff; } break;
+			STBI__CASE(3, 4) { dest[0] = src[0]; dest[1] = src[1]; dest[2] = src[2]; dest[3] = 0xffff; } break;
 			STBI__CASE(3, 1) { dest[0] = stbi__compute_y_16(src[0], src[1], src[2]); } break;
 			STBI__CASE(3, 2) { dest[0] = stbi__compute_y_16(src[0], src[1], src[2]); dest[1] = 0xffff; } break;
 			STBI__CASE(4, 1) { dest[0] = stbi__compute_y_16(src[0], src[1], src[2]); } break;
 			STBI__CASE(4, 2) { dest[0] = stbi__compute_y_16(src[0], src[1], src[2]); dest[1] = src[3]; } break;
-			STBI__CASE(4, 3) { dest[0] = src[0];dest[1] = src[1];dest[2] = src[2]; } break;
+			STBI__CASE(4, 3) { dest[0] = src[0]; dest[1] = src[1]; dest[2] = src[2]; } break;
 			default: STBI_ASSERT(0); STBI_FREE(data); STBI_FREE(good); return (stbi__uint16*)stbi__errpuc("unsupported", "Unsupported format conversion");
 		}
 		#undef STBI__CASE
@@ -2146,7 +2146,7 @@ static void stbi__grow_buffer_unsafe(stbi__jpeg* j)
 }
 
 // (1 << n) - 1
-static const stbi__uint32 stbi__bmask[17] = { 0, 1, 3, 7, 15, 31, 63, 127, 255, 511, 1023, 2047, 4095, 8191, 16383, 32767, 65535 };
+static const stbi__uint32 stbi__bmask[17] = {0, 1, 3, 7, 15, 31, 63, 127, 255, 511, 1023, 2047, 4095, 8191, 16383, 32767, 65535};
 
 // decode a jpeg huffman value from the bitstream
 stbi_inline static int stbi__jpeg_huff_decode(stbi__jpeg* j, stbi__huffman* h)
@@ -2203,7 +2203,7 @@ stbi_inline static int stbi__jpeg_huff_decode(stbi__jpeg* j, stbi__huffman* h)
 }
 
 // bias[n] = (-1<<n) + 1
-static const int stbi__jbias[16] = { 0, -1, -3, -7, -15, -31, -63, -127, -255, -511, -1023, -2047, -4095, -8191, -16383, -32767 };
+static const int stbi__jbias[16] = {0, -1, -3, -7, -15, -31, -63, -127, -255, -511, -1023, -2047, -4095, -8191, -16383, -32767};
 
 // combined JPEG 'receive' and JPEG 'extend', since baseline
 // always extends everything it receives.
@@ -3313,7 +3313,7 @@ static int stbi__process_marker(stbi__jpeg* z, int m)
 
 		if (m == 0xE0 && L >= 5)
 		{ // JFIF APP0 segment
-			static const unsigned char tag[5] = { 'J', 'F', 'I', 'F', '\0' };
+			static const unsigned char tag[5] = {'J', 'F', 'I', 'F', '\0'};
 			int ok = 1;
 			int i;
 			for (i = 0; i < 5; ++i)
@@ -3325,7 +3325,7 @@ static int stbi__process_marker(stbi__jpeg* z, int m)
 		}
 		else if (m == 0xEE && L >= 12)
 		{ // Adobe APP14 segment
-			static const unsigned char tag[6] = { 'A', 'd', 'o', 'b', 'e', '\0' };
+			static const unsigned char tag[6] = {'A', 'd', 'o', 'b', 'e', '\0'};
 			int ok = 1;
 			int i;
 			for (i = 0; i < 6; ++i)
@@ -3443,7 +3443,7 @@ static int stbi__process_frame_header(stbi__jpeg* z, int scan)
 	z->rgb = 0;
 	for (i = 0; i < s->img_n; ++i)
 	{
-		static const unsigned char rgb[3] = { 'R', 'G', 'B' };
+		static const unsigned char rgb[3] = {'R', 'G', 'B'};
 		z->img_comp[i].id = stbi__get8(s);
 		if (s->img_n == 3 && z->img_comp[i].id == rgb[i])
 			++z->rgb;
@@ -4083,7 +4083,7 @@ static stbi_uc* load_jpeg_image(stbi__jpeg* z, int* out_x, int* out_y, int* comp
 		int k;
 		unsigned int i, j;
 		stbi_uc* output;
-		stbi_uc* coutput[4] = { NULL, NULL, NULL, NULL };
+		stbi_uc* coutput[4] = {NULL, NULL, NULL, NULL};
 
 		stbi__resample res_comp[4];
 
@@ -4537,16 +4537,16 @@ static int stbi__zexpand(stbi__zbuf* z, char* zout, int n)  // need to make room
 static const int stbi__zlength_base[31] = {
 	3, 4, 5, 6, 7, 8, 9, 10, 11, 13,
 	15, 17, 19, 23, 27, 31, 35, 43, 51, 59,
-	67, 83, 99, 115, 131, 163, 195, 227, 258, 0, 0 };
+	67, 83, 99, 115, 131, 163, 195, 227, 258, 0, 0};
 
 static const int stbi__zlength_extra[31] =
-{ 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0, 0, 0 };
+{0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0, 0, 0};
 
-static const int stbi__zdist_base[32] = { 1, 2, 3, 4, 5, 7, 9, 13, 17, 25, 33, 49, 65, 97, 129, 193,
-257, 385, 513, 769, 1025, 1537, 2049, 3073, 4097, 6145, 8193, 12289, 16385, 24577, 0, 0 };
+static const int stbi__zdist_base[32] = {1, 2, 3, 4, 5, 7, 9, 13, 17, 25, 33, 49, 65, 97, 129, 193,
+257, 385, 513, 769, 1025, 1537, 2049, 3073, 4097, 6145, 8193, 12289, 16385, 24577, 0, 0};
 
 static const int stbi__zdist_extra[32] =
-{ 0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13 };
+{0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13};
 
 static int stbi__parse_huffman_block(stbi__zbuf* a)
 {
@@ -4611,7 +4611,7 @@ static int stbi__parse_huffman_block(stbi__zbuf* a)
 
 static int stbi__compute_huffman_codes(stbi__zbuf* a)
 {
-	static const stbi_uc length_dezigzag[19] = { 16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15 };
+	static const stbi_uc length_dezigzag[19] = {16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15};
 	stbi__zhuffman z_codelength;
 	stbi_uc lencodes[286 + 32 + 137];//padding for maximum single op
 	stbi_uc codelength_sizes[19];
@@ -4902,7 +4902,7 @@ static stbi__pngchunk stbi__get_chunk_header(stbi__context* s)
 
 static int stbi__check_png_header(stbi__context* s)
 {
-	static const stbi_uc png_sig[8] = { 137, 80, 78, 71, 13, 10, 26, 10 };
+	static const stbi_uc png_sig[8] = {137, 80, 78, 71, 13, 10, 26, 10};
 	int i;
 	for (i = 0; i < 8; ++i)
 		if (stbi__get8(s) != png_sig[i]) return stbi__err("bad png sig", "Not a PNG");
@@ -4950,7 +4950,7 @@ static int stbi__paeth(int a, int b, int c)
 	return t1;
 }
 
-static const stbi_uc stbi__depth_scale_table[9] = { 0, 0xff, 0x55, 0, 0x11, 0, 0, 0, 0x01 };
+static const stbi_uc stbi__depth_scale_table[9] = {0, 0xff, 0x55, 0, 0x11, 0, 0, 0, 0x01};
 
 // adds an extra all-255 alpha channel
 // dest == src is legal
@@ -5185,10 +5185,10 @@ static int stbi__create_png_image(stbi__png* a, stbi_uc* image_data, stbi__uint3
 	if (!final) return stbi__err("outofmem", "Out of memory");
 	for (p = 0; p < 7; ++p)
 	{
-		int xorig [] = { 0, 4, 0, 2, 0, 1, 0 };
-		int yorig [] = { 0, 0, 4, 0, 2, 0, 1 };
-		int xspc [] = { 8, 8, 4, 4, 2, 2, 1 };
-		int yspc [] = { 8, 8, 8, 4, 4, 2, 2 };
+		int xorig [] = {0, 4, 0, 2, 0, 1, 0};
+		int yorig [] = {0, 0, 4, 0, 2, 0, 1};
+		int xspc [] = {8, 8, 4, 4, 2, 2, 1};
+		int yspc [] = {8, 8, 8, 4, 4, 2, 2};
 		int i, j, x, y;
 		// pass1_x[4] = 0, pass1_x[5] = 1, pass1_x[12] = 1
 		x = (a->s->img_x - xorig[p] + xspc[p] - 1) / xspc[p];
@@ -5423,7 +5423,7 @@ static void stbi__de_iphone(stbi__png* z)
 static int stbi__parse_png_file(stbi__png* z, int scan, int req_comp)
 {
 	stbi_uc palette[1024], pal_img_n = 0;
-	stbi_uc has_trans = 0, tc[3] = { 0 };
+	stbi_uc has_trans = 0, tc[3] = {0};
 	stbi__uint16 tc16[3];
 	stbi__uint32 ioff = 0, idata_limit = 0, i, pal_len = 0;
 	int first = 1, k, interlace = 0, color = 0, is_iphone = 0;
@@ -6335,7 +6335,7 @@ static void* stbi__tga_load(stbi__context* s, int* x, int* y, int* comp, int req
 	unsigned char* tga_data;
 	unsigned char* tga_palette = NULL;
 	int i, j;
-	unsigned char raw_data[4] = { 0 };
+	unsigned char raw_data[4] = {0};
 	int RLE_count = 0;
 	int RLE_repeating = 0;
 	int read_next_pixel = 1;
@@ -6854,7 +6854,7 @@ static int stbi__pic_test_core(stbi__context* s)
 	if (!stbi__pic_is4(s, "\x53\x80\xF6\x34"))
 		return 0;
 
-	for (i = 0;i < 84;++i)
+	for (i = 0; i < 84; ++i)
 		stbi__get8(s);
 
 	if (!stbi__pic_is4(s, "PICT"))
@@ -6888,7 +6888,7 @@ static void stbi__copyval(int channel, stbi_uc* dest, const stbi_uc* src)
 {
 	int mask = 0x80, i;
 
-	for (i = 0;i < 4; ++i, mask >>= 1)
+	for (i = 0; i < 4; ++i, mask >>= 1)
 		if (channel & mask)
 			dest[i] = src[i];
 }
@@ -6939,7 +6939,7 @@ static stbi_uc* stbi__pic_load_core(stbi__context* s, int width, int height, int
 				case 0: {//uncompressed
 					int x;
 
-					for (x = 0;x < width;++x, dest += 4)
+					for (x = 0; x < width; ++x, dest += 4)
 						if (!stbi__readval(s, packet->channel, dest))
 							return 0;
 					break;
@@ -6989,7 +6989,7 @@ static stbi_uc* stbi__pic_load_core(stbi__context* s, int width, int height, int
 							if (!stbi__readval(s, packet->channel, value))
 								return 0;
 
-							for (i = 0;i < count;++i, dest += 4)
+							for (i = 0; i < count; ++i, dest += 4)
 								stbi__copyval(packet->channel, dest, value);
 						}
 						else
@@ -6997,7 +6997,7 @@ static stbi_uc* stbi__pic_load_core(stbi__context* s, int width, int height, int
 							++count;
 							if (count > left) return stbi__errpuc("bad file", "scanline overrun");
 
-							for (i = 0;i < count;++i, dest += 4)
+							for (i = 0; i < count; ++i, dest += 4)
 								if (!stbi__readval(s, packet->channel, dest))
 									return 0;
 						}
