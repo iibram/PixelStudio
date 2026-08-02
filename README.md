@@ -100,6 +100,10 @@ g++ -std=c++20 -O2 -march=native -ffast-math src/*.cpp -o main
 ### ✅ Done
 - [x] **Core Image I/O Pipeline:** Integrated Sean Barrett’s `stb` library for fast, reliable image decoding, encoding, and dimension scaling.
 - [x] **Optimized Backend Engine (`ImageProcessor`):** Established the YUV+A internal data model, achieving lightning-fast conversions, memory-efficient pointer operations, and sub-millisecond validation loops.
+- [x] **Global Image Operations:** Added standard brightness and contrast adjustments for baseline image enhancement.
+- [x] **Automated Histogram Equalization & Analysis:** Implemented full histogram processing using normalized probability density (PDF) and cumulative distribution functions (CDF) with smart state caching (persisted until image selection changes).
+- [x] **Flexible Image Segmentation:** Added automatic Balanced Histogram Thresholding (BHT) and manual thresholding options, featuring customizable background/foreground masking (`Segm_t` for transparent, solid, or preserved color fills).
+- [x] **Retro Comicify Filter:** Developed a high-performance bit-shift quantization pipeline to transform high-res images into styled retro/comic-art graphics.
 
 ### 🚀 In Progress / Upcoming
 - [ ] **Dear ImGui Integration:** Implementing the cross-platform GUI view, complete with a unified file-chooser system and real-time canvas rendering.

@@ -36,7 +36,19 @@ int main()
 	}
 
 	// comparing img[0] with img[1]. Number of different pixels should be 0!
-	ip.printDiffInRGBA(1);
+	ip.compareRGBA(1);
+
+
+	// --------------------------------------------------------------------------------------
+	// 						  QUICK TESTS DURING SOFTWARE DEVELOPEMENT
+	// --------------------------------------------------------------------------------------
+
+	// ip.loadImage(src.c_str());
+	// ip.comicify(7);
+	// // ip.scaleIntensity(0.45f);
+	// // ip.applyHistogramEqualization();
+	// // ip.applyAutoSegmentation(Segm_t::BLACK_WHITE | Segm_t::MAKE_BACKGROUND_TRANSPARENT);
+	// ip.saveImage();
 
 	return 0;
 }

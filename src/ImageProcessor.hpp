@@ -5,6 +5,9 @@
 #include <chrono>
 
 
+
+enum Segm_t : uint8_t { COLORED, BLACK_WHITE, MAKE_BACKGROUND_TRANSPARENT };
+
 /**
  * @brief Provides a professional and efficient environment for image processing.
  * @note Uses externally the "stb" library by [Sean Barrett](https://github.com/nothings/stb) exclusively for reading and writing PNG files.
@@ -18,14 +21,20 @@ public:
 	void loadImage(const char* img_path);
 	void saveImage(const char* out_path = nullptr);
 
-	bool selectImage(uint16_t idx);
+	bool selectImage(uint8_t idx);
 
 	void addIntensity(float value);
 	void scaleIntensity(float factor);
 	void setContrast(float k);
 	void toNegative();
 
-	void printDiffInRGBA(uint16_t oIdx);
+	void applyHistogramEqualization();
+	void applySegmentation(float t, uint8_t segmType = Segm_t::BLACK_WHITE);
+	void applyAutoSegmentation(uint8_t segmType = Segm_t::BLACK_WHITE);
+	void comicify(uint8_t exp);
+
+	void compareRGBA(uint8_t oIdx);
+	float getBHT();
 
 private:
 	using clock = std::chrono::steady_clock;
@@ -88,6 +97,7 @@ private:
 	};
 
 
+	std::array<double, 256> CDF;				// temporary cumulative histogram of a selected image (percentage)
 	std::vector<Image> images;					// all images currently available in this session
 	std::vector<uint8_t> tempRGBA;				// temporary RGBA data, copied from stb_data (loadImage) or converted by toYUV() (selectImage)
 
@@ -99,10 +109,12 @@ private:
 	int HEIGHT;									// image height
 	int CHANNELS;								// image channels (4 = RGBA is used)
 
-	uint16_t IDX;								// current selected image index (images[IDX])
+	uint8_t IDX;								// current selected image index (images[IDX])
+	uint8_t idxCDF;								// image index of the current active CDF
 
-	void toYUV();
-	void toRGBA();
-	uint8_t quantize(float f);
+	void toYUV();								// RGBA -> YUV
+	void toRGBA();								// YUV -> RGBA
+	void computeCDF();							// CDF = Cumulative Distribution Function (W * H -> 256)
+	uint8_t quantize(float f);					// [0.0, 1.0] -> [0, 255]
 	void showDuration(const char* text);
 };
