@@ -1,13 +1,29 @@
-# PixelStudio (Backend Core)
+# Pixel Studio v0.2.0
 
-![C++](https://img.shields.io/badge/C%2B%2B-20-blue.svg) ![License](https://img.shields.io/badge/License-MIT-green.svg) ![Purpose](https://img.shields.io/badge/Purpose-Performance%20Optimization-firebrick.svg) ![Category](https://img.shields.io/badge/Category-Image%20Processing-teal.svg) ![OS](https://img.shields.io/badge/OS-Windows%20%26%20Linux-purple.svg)
+![C++](https://img.shields.io/badge/C%2B%2B-20-blue.svg) ![License](https://img.shields.io/badge/License-MIT-green.svg) ![Purpose](https://img.shields.io/badge/Purpose-Educational%20%26%20High%20Performance-firebrick.svg) ![Category](https://img.shields.io/badge/Category-Computer%20Vision-teal.svg) ![Parallelization](https://img.shields.io/badge/Parallelization-OpenMP-orange.svg) ![OS](https://img.shields.io/badge/OS-Windows%20%26%20Linux-purple.svg)
+
+<p align="center">
+  <img src="res/showcase/showcase(AI_gen).jpg" alt="Console Output Showcase" width="800">
+</p>
+
+---
+
+> **⚠️ Status: In Progress / Major Architecture Refactoring (v0.2.0 Upgrade)**
+> *PixelStudio is a high-performance C++23 Computer Vision engine designed for educational deep-dives into hardware-aware image processing. It is currently undergoing a major architectural overhaul, transitioning to an interactive Dear ImGui desktop interface, real-time native VRAM/RAM inspection, and cache-optimized SoA memory layouts. Updated documentation and benchmarks will follow shortly.*
+
+---
+
+<!--
+======================================================================
+TEMPORARILY COMMENTED OUT - OLD README CONTENT
+======================================================================
 
 A lightning-fast, highly optimized C++ image processing backend designed from the ground up for seamless integration with a future **Dear ImGui** cross-platform graphical user interface.
 
 This repository represents the rock-solid computational core (the backend) of an upcoming custom image editing suite built for **Windows** and **Linux**.
 
 <p align="center">
-  <img src="resources/showcase/showcase.png" alt="Console Output Showcase" width="700">
+  <img src="res/showcase/showcase.png" alt="Console Output Showcase" width="700">
   <br>
   <em>Figure 1: Terminal execution output showing performance benchmarks and pipeline execution from main().</em>
 </p>
@@ -117,3 +133,59 @@ g++ -std=c++20 -O2 -march=native -ffast-math src/*.cpp -o main
 *Note on licensing for active development:* Even during early-stage or unpolished development phases, applying an open-source license like the MIT License establishes clear usage terms for collaborators and anyone reviewing the codebase.
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+---
+
+# PixelStudio
+
+> **Work in Progress / Active Development**
+> *PixelStudio is a lightweight, high-performance C++ desktop engine for low-latency image processing and computer vision exploration.*
+
+---
+
+## 🚀 Overview
+
+PixelStudio is built with a strict **hardware-conscious architecture** philosophy: 0% idle CPU/GPU usage when static, zero frame-delay latency, and deterministic UI layouts. It provides an intuitive environment for real-time image manipulation, spatial filter design, and color space analytics.
+
+While the project is currently in **active development** (Alpha status), the core framework, window/event pipeline, custom UI architecture, and baseline image buffer conversions are production-ready.
+
+---
+
+## ✨ Current Features & Technical Highlights
+
+- **Event-Driven Event Loop:** Custom GLFW + OpenGL 3.3 integration utilizing `glfwWaitEvents()` for zero power waste in idle states.
+- **High-DPI Dynamic Scaling:** Multi-monitor aware scaling for fonts, UI paddings, and window limits down to pixel-perfect baseline alignments.
+- **Multi-Tab Workspace:** Clean tab management with real-time metadata inspects (file paths, dimensions, uncompressed memory consumption).
+- **Image Processing Pipeline:** Real-time buffer manipulations (RGBA, YUV) and spatial filter kernels.
+- **Deterministic UI Constraints:** Centered initializations, bounded window scaling, and responsive tooltips without thread/frame latches.
+
+---
+
+## 🛠️ Tech Stack & Dependencies
+
+* **Language:** C++20 / C++23
+* **Graphics API:** OpenGL 3.3 Core Profile (GLAD)
+* **Windowing & Input:** GLFW3
+* **GUI Engine:** Dear ImGui
+* **Build System:** CMake / Clang / GCC
+
+---
+
+## 📋 Roadmap & Upcoming Improvements
+
+- [ ] Fine-tuning gradient derivative representations ($I_x$ & $I_y$ views with neutral `0.5f` offset).
+- [ ] Advanced edge detection & feature extraction modules (Harris Corner / SIFT concepts).
+- [ ] OpenMP accelerated parallel filter pipelines.
+- [ ] Refactoring of extended UI panels & parameter sliders.
+
+---
+
+## 👤 Author & Status
+
+Developed by **Ibrahim Ibram**
+*PixelStudio is an active open-source side project. APIs, internal layout IDs, and pipeline methods are subject to refactoring as features evolve.*
+
+
+======================================================================
+-->

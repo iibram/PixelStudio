@@ -353,12 +353,14 @@ static void stbiw__writefv(stbi__write_context* s, const char* fmt, va_list v)
 		switch (*fmt++)
 		{
 			case ' ': break;
-			case '1': {
+			case '1':
+			{
 				unsigned char x = STBIW_UCHAR(va_arg(v, int));
 				s->func(s->context, &x, 1);
 				break;
 			}
-			case '2': {
+			case '2':
+			{
 				int x = va_arg(v, int);
 				unsigned char b[2];
 				b[0] = STBIW_UCHAR(x);
@@ -366,7 +368,8 @@ static void stbiw__writefv(stbi__write_context* s, const char* fmt, va_list v)
 				s->func(s->context, b, 2);
 				break;
 			}
-			case '4': {
+			case '4':
+			{
 				stbiw_uint32 x = va_arg(v, int);
 				unsigned char b[4];
 				b[0] = STBIW_UCHAR(x);

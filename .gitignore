@@ -1,3 +1,6 @@
 *.exe
 *.code-workspace
+*.json
+*.ini
+.cache/
 .vscode/

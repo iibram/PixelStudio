@@ -5446,7 +5446,8 @@ static int stbi__parse_png_file(stbi__png* z, int scan, int req_comp)
 				is_iphone = 1;
 				stbi__skip(s, c.length);
 				break;
-			case STBI__PNG_TYPE('I', 'H', 'D', 'R'): {
+			case STBI__PNG_TYPE('I', 'H', 'D', 'R'):
+			{
 				int comp, filter;
 				if (!first) return stbi__err("multiple IHDR", "Corrupt PNG");
 				first = 0;
@@ -5479,7 +5480,8 @@ static int stbi__parse_png_file(stbi__png* z, int scan, int req_comp)
 				break;
 			}
 
-			case STBI__PNG_TYPE('P', 'L', 'T', 'E'): {
+			case STBI__PNG_TYPE('P', 'L', 'T', 'E'):
+			{
 				if (first) return stbi__err("first not IHDR", "Corrupt PNG");
 				if (c.length > 256 * 3) return stbi__err("invalid PLTE", "Corrupt PNG");
 				pal_len = c.length / 3;
@@ -5494,7 +5496,8 @@ static int stbi__parse_png_file(stbi__png* z, int scan, int req_comp)
 				break;
 			}
 
-			case STBI__PNG_TYPE('t', 'R', 'N', 'S'): {
+			case STBI__PNG_TYPE('t', 'R', 'N', 'S'):
+			{
 				if (first) return stbi__err("first not IHDR", "Corrupt PNG");
 				if (z->idata) return stbi__err("tRNS after IDAT", "Corrupt PNG");
 				if (pal_img_n)
@@ -5527,7 +5530,8 @@ static int stbi__parse_png_file(stbi__png* z, int scan, int req_comp)
 				break;
 			}
 
-			case STBI__PNG_TYPE('I', 'D', 'A', 'T'): {
+			case STBI__PNG_TYPE('I', 'D', 'A', 'T'):
+			{
 				if (first) return stbi__err("first not IHDR", "Corrupt PNG");
 				if (pal_img_n && !pal_len) return stbi__err("no PLTE", "Corrupt PNG");
 				if (scan == STBI__SCAN_header)
@@ -5555,7 +5559,8 @@ static int stbi__parse_png_file(stbi__png* z, int scan, int req_comp)
 				break;
 			}
 
-			case STBI__PNG_TYPE('I', 'E', 'N', 'D'): {
+			case STBI__PNG_TYPE('I', 'E', 'N', 'D'):
+			{
 				stbi__uint32 raw_len, bpl;
 				if (first) return stbi__err("first not IHDR", "Corrupt PNG");
 				if (scan != STBI__SCAN_load) return 1;
@@ -6936,7 +6941,8 @@ static stbi_uc* stbi__pic_load_core(stbi__context* s, int width, int height, int
 				default:
 					return stbi__errpuc("bad format", "packet has bad compression type");
 
-				case 0: {//uncompressed
+				case 0:
+				{//uncompressed
 					int x;
 
 					for (x = 0; x < width; ++x, dest += 4)
@@ -6968,7 +6974,8 @@ static stbi_uc* stbi__pic_load_core(stbi__context* s, int width, int height, int
 				}
 				break;
 
-				case 2: {//Mixed RLE
+				case 2:
+				{//Mixed RLE
 					int left = width;
 					while (left > 0)
 					{
