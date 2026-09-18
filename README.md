@@ -1,191 +1,184 @@
 # Pixel Studio v0.2.0
 
-![C++](https://img.shields.io/badge/C%2B%2B-20-blue.svg) ![License](https://img.shields.io/badge/License-MIT-green.svg) ![Purpose](https://img.shields.io/badge/Purpose-Educational%20%26%20High%20Performance-firebrick.svg) ![Category](https://img.shields.io/badge/Category-Computer%20Vision-teal.svg) ![Parallelization](https://img.shields.io/badge/Parallelization-OpenMP-orange.svg) ![OS](https://img.shields.io/badge/OS-Windows%20%26%20Linux-purple.svg)
+![C++](https://img.shields.io/badge/C%2B%2B-23-blue.svg) ![License](https://img.shields.io/badge/License-MIT-green.svg) ![Purpose](https://img.shields.io/badge/Purpose-Educational%20%26%20High%20Performance-firebrick.svg) ![Category](https://img.shields.io/badge/Category-Computer%20Vision-teal.svg) ![Parallelization](https://img.shields.io/badge/Parallelization-OpenMP-orange.svg) ![OS](https://img.shields.io/badge/OS-Windows%20%26%20Linux-purple.svg)
+
+> A high-performance, cross-platform C++23 Image Processing & Computer Vision Analytics Engine. Engineered with an **Immediate Mode UI (Dear ImGui)**, **OpenMP parallelization**, **Structure-of-Arrays (SoA)** memory layouts, and zero-overhead GPU telemetries.
 
 <p align="center">
-  <img src="res/showcase/showcase(AI_gen).jpg" alt="Console Output Showcase" width="800">
+  <img src="res/showcases/header(AI_gen).jpg" alt="Console Output Showcase">
 </p>
 
 ---
 
-> **⚠️ Status: In Progress / Major Architecture Refactoring (v0.2.0 Upgrade)**
-> *PixelStudio is a high-performance C++23 Computer Vision engine designed for educational deep-dives into hardware-aware image processing. It is currently undergoing a major architectural overhaul, transitioning to an interactive Dear ImGui desktop interface, real-time native VRAM/RAM inspection, and cache-optimized SoA memory layouts. Updated documentation and benchmarks will follow shortly.*
+## 📸 Overview & Purpose
+
+**Pixel Studio** was designed as a dual-purpose engine:
+
+1. **Computer Vision Educational Inspection Platform:**
+   Built specifically to visualize and intuitively understand complex CV algorithms (such as **Harris Corner Detection** and upcoming multi-scale descriptors like **SIFT** and **SURF**). With real-time slider updates, step-by-step pipeline inspection (Sobel gradients, Gaussian smoothing, keypoint thresholds), students and engineers can inspect algorithm internals down to the raw pixel level.
+2. **High-Performance C++ Engineering:**
+   Engineered from the ground up to handle high-resolution imagery (up to **48 Megapixels+**) with sub-second execution times. It serves as a real-world benchmark for low-level system design, thread parallelism, and hardware-aware resource management.
 
 ---
 
-<!--
-======================================================================
-TEMPORARILY COMMENTED OUT - OLD README CONTENT
-======================================================================
+## ⚡ High-Impact Features & Architecture Highlights
 
-A lightning-fast, highly optimized C++ image processing backend designed from the ground up for seamless integration with a future **Dear ImGui** cross-platform graphical user interface.
+### 🎯 1. O(1) Stamp-Based Validation & Invalidation System
+To prevent redundant computation across multi-stage image processing pipelines, PixelStudio incorporates an $O(1)$ **Stamp Verification Engine**:
+* Answers pipeline questions instantly: *Does the active RGBA display vector match the loaded image? Is the cached padding aligned with the current inspection view? Has Harris Detection executed on this exact dataset version?*
+* Eliminates buffer thrashing and invalidates downstream passes **only when parent parameters change**.
 
-This repository represents the rock-solid computational core (the backend) of an upcoming custom image editing suite built for **Windows** and **Linux**.
+### 🧬 2. SIMD-Friendly YUVA Structure-of-Arrays (SoA)
+Instead of processing redundant RGB channels across spatial convolution filters, Pixel Studio converts image data into a decoupled **YUVA planar format**:
+* **Luminance-Centric Processing:** Spatial operations (Sobel, Gaussian, Harris) operate exclusively on the $Y$ (Luminance) channel. Color fidelity ($U/V$) and transparency ($A$) remain strictly preserved with zero color degradation.
+* **Cache Efficiency:** 1-channel linear traversals maximize L1/L2 cache hit rates compared to interleaved (AoS) formats.
+* **Single Active RGBA Buffer:** Only **one** global RGBA vector is materialized in RAM for display rendering, alongside the active tab's YUVA structures.
 
-<p align="center">
-  <img src="res/showcase/showcase.png" alt="Console Output Showcase" width="700">
-  <br>
-  <em>Figure 1: Terminal execution output showing performance benchmarks and pipeline execution from main().</em>
-</p>
+### 🧵 3. Thread Parallelism via OpenMP
+* High-intensity spatial convolutions (Sobel derivatives, separable 1D Gaussian blurs, Non-Maximum Suppression) are accelerated using **OpenMP loop parallelization**.
+* To prevent UI thread lockups and complex race conditions within the Immediate Mode GUI, thread parallelism is strictly constrained to the processing kernels—keeping the UI event loop completely deterministic and serial.
 
----
+### 🖥️ 4. Hardware-Aware System Inspection (`SysInfo`)
+Pixel Studio queries hardware topologies dynamically at initialization:
+* **Physical Core Affinity:** Filters out HyperThreading / SMT virtual logical threads to determine true physical core counts, automatically calculating **optimal OpenMP chunk sizes** per image payload.
+* **Native OS Integration:** Leverages OS-native FileChoosers (with pre-configured extension filters) and automatically syncs the UI theme (Light/Dark Mode) with system preferences upon startup.
+* **Cross-Platform Resilience:** Uses conditionally compiled platform shims (`#defines`) to ensure clean compilation across Windows and Linux (CachyOS/GCC/Clang).
 
-## 🚀 Key Architectural Highlights
+### 📐 5. Scalable Immediate Mode UI (`UIComponents`)
+* Custom-crafted UI elements: `CustomMenuItem`, `CustomTabButton`, `ThemeToggleButton`, and `ToggleButton`.
+* **DPI-Aware Scaling Engine:** Dynamically queries screen DPI at application launch to establish an absolute base scaling factor (`UI::em`). All UI dimensions, padding, and font hierarchies are pre-scaled once at startup—eliminating runtime layout recalculation during ImGui frames.
 
-* **Decoupled Architecture:** Designed specifically with a clean *separation of concerns*. The backend (`ImageProcessor`) operates independently, making the integration of the upcoming ImGui view layer a straightforward and clean plug-and-play process.
-
-* **Internal YUV + Alpha Format (YCbCrA):** Instead of chewing through cumbersome RGB channels for every single modification, the engine converts images internally into a custom extended YUV format.
-
-	* Most standard manipulations (e.g., contrast, brightness) only touch the **Y (Intensity/Luma)** channel in the interval $[0, 1]$, slashing computational overhead.
-
-	* More complex color adjustments selectively tap into the **U and V** chrominance channels without ever needing heavy 3-channel RGB matrix recalculations on the fly.
-
-* **Blazing Fast Performance:**
-
-	* Optimized via low-level pointer arithmetic, smart memory management, and zero unnecessary vector re-allocations during ad-hoc updates.
-
-	* Transforms a massive **4K image (4226 x 2847)** back into an RGBA display buffer in roughly **20 milliseconds**, ensuring silky-smooth, real-time feedback for the upcoming UI frames.
-
-* **Mathematical Precision:** Designed for near-lossless roundtrip accuracy. Converting from RGBA to YUV and back achieves a 100% reconstruction rate (0.0 pixel delta) under standard mathematical operations.
+### 📊 6. Deterministic VRAM Tracking & Telemetry
+* **Zero-Overhead Memory Footprint:** Monitors GPU VRAM consumption via native OpenGL driver queries (NVIDIA/AMD path selection) alongside an in-memory byte counter.
+* **Smart Texture Lifecycle:** VRAM textures for intermediate gradient inspection ($I_x, I_y, I_{xx}, I_{yy}, I_{xy}$) are loaded lazily on-demand and freed during algorithm rebuilds or tab closures.
+* **Live Status Indicator:** Real-time color-coded feedback (`GOOD` < 60%, `WARN` 60–85%, `ALERT` > 85%) warns users of system VRAM pressure.
+* **Live Status Indicator:** Real-time color-coded feedback (🟢 `GOOD` < 60%, 🟡 `WARN` 60–85%, 🔴 `ALERT` > 85%) warns users of system VRAM pressure.
 
 ---
 
-## 📂 Repository Structure
+## 🖼️ Interactive Showcase & Inspection Views
 
-```text
-PixelStudio/
-├── resources/
-│   ├── IN/                 # Included lossless/free test assets (including 4K samples)
-│   ├── OUT/                # Output directories generated by processing tasks
-│   └── showcase/           # Contains console output visual assets for documentation
-├── src/                    # Core C++ source files
-│   ├── external/           # Header-only dependencies (Sean Barrett's "stb" library)
-│   ├── ImageProcessor.hpp  # Class declaration, internal structures, and inline helpers
-│   ├── ImageProcessor.cpp  # Engine logic: YUV transformations, contrast filters, and high-performance pixel checks
-│   └── main.cpp            # Execution entry point demonstrating the pipeline and timing benchmarks
-├── .gitignore              # Specifies intentionally untracked files to ignore
-├── LICENSE                 # MIT License File
-└── README.md               # Project documentation and architecture overview
-```
+<div align="center">
 
-### Module Breakdown
+### 🎯 Mathematical Precision & Synthetic Verification
+*Rigorous validation of the Harris-Stephens implementation using a synthetic geometric calibration grid. All 148 keypoints are detected with zero false positives along edge contours, confirming exact Eigenvalue computation and Non-Maximum Suppression (NMS).*
 
-* **`ImageProcessor.hpp`:** Defines the core `ImageProcessor` class interface, vector storage containers (`std::vector<Image>`), memory buffers (`tempRGBA`), and performance timing structures.
-
-* **`ImageProcessor.cpp`:** Implements the heavy-lifting computational logic — including rapid raw buffer mapping from `stb`, bi-directional color space conversions (`toYUV()`, `toRGBA`), pixel-level adjustments, and optimized validation loops.
-
-* **`main.cpp`:** Orchestrates test image ingestion, multi-stage contrast cascades, file exports, and real-time benchmark logging to the console.
+![Harris Calibration Grid](res/showcases/harris_correctness.png)
 
 ---
 
-## 🛠️ Tech Stack, Prerequisites & Getting Started
+### 🔬 Pipeline Inspection & Feature Detection
 
-### Tech Stack & Dependencies
+| Vertical Gradient Matrix ($I_y$) | Architecture Feature Density ($I_{yy}$) |
+| :---: | :---: |
+| ![Sobel Iy Direction](res/showcases/sobelY.png) | ![Building Keypoint Density](res/showcases/gaussianYY.png) |
+| *Real-time $I_y$ spatial gradient visualization via OpenMP-accelerated Sobel convolution.* | *Stress-testing on complex real-world data ($3648 \times 2365$ px) detecting 7,400+ keypoints with custom color overlays.* |
 
-**Language:** Modern C++
+---
 
-**Image I/O:** Uses [Sean Barrett](https://github.com/nothings/stb)’s header - only **stb_image** and **stb_image_write** libraries strictly for fast file loading, saving, and dimension retrieval.
+### 🎨 Bonus: Creative Pipeline Synthesis *(Optional)*
+*Demonstrating multi-stage execution—combining image inversion, color-space segmentation, and parallel feature extraction on a 30 MP landscape composition.*
 
-**Platform Support:** Cross-platform compatible (currently tested and optimized on Windows 11 and Linux/CachyOS).
+![Pipeline Synthesis](res/showcases/cascade.png)
 
-### Prerequisites
+</div>
 
-* A modern C++ compiler supporting **C++20** (e.g., `g++` 11+, `clang` 13+, or MSVC latest).
+---
 
-### Build & Run
+## 🔬 Performance Benchmarks
 
-Clone the repository, drop your test images into the `resources/IN/` folder (or use the provided ones), compile the backend, and let the pixels fly!
+*Evaluated on a **48 Megapixel (8000 × 6000)** image payload:*
+
+| Pipeline Stage | Processing Time ($\Delta t$) | Description |
+| :--- | :--- | :--- |
+| **Sobel Gradient Pass** | `~55.2 ms` | Dual-axis gradient calculation ($I_x, I_y$) |
+| **Separable Gaussian (5x1D)** | `~141.8 ms` | Horizontal/Vertical smoothing pass ($I_{xx}, I_{yy}, I_{xy}$) |
+| **Keypoint Extraction (NMS)** | **`6.16 ms`** | Candidate filtering (**249,679 points @ $t=0.05$**) |
+| **Total Pipeline Rebuild** | **`~220 ms`** | Full end-to-end execution on 48MP input |
+
+---
+
+## 🗺️ Roadmap & Future Enhancements
+
+* **`uint8_t` YUVA Memory Refactor:** Transitioning internal floating-point buffers to integer-aligned `uint8_t` layouts to cut memory footprints by **75%** and unlock AVX2/AVX-512 vectorization.
+* **Multi-Scale Feature Descriptors:** Implementing scale-space pyramids for **SIFT** and **SURF** feature detection and matching pipelines.
+
+---
+
+## 🛠️ Toolchain, Dependencies & Build Guide
+
+### 🧱 Core Architecture & Dependencies
+
+* **Language Standard:** Modern C++23
+* **GUI Framework:** [Dear ImGui](https://github.com/ocornut/imgui) (by Omar Cornut) backed by [GLFW](https://www.glfw.org/)
+* **Image I/O:** [stb library](https://github.com/nothings/stb) (by Sean Barrett) for single-header loading/saving
+**Parallelization:** [OpenMP](https://www.openmp.org/) 5.0+ (Multi-threaded processing for all parallelizable image algorithms)
+* **Graphics API:** OpenGL 3.3+ (Core Profile)
+* **Target Platforms:** Windows 11 & Linux (CachyOS / Ubuntu)
+
+---
+
+### 🚀 Building from Source
+
+Pixel Studio relies on a clean, vendor-decoupled folder layout (`/include`, `/src`, `/external`). Pre-compiled static libraries and third-party headers reside within `/external`.
+
+#### 1. Prerequisites
+Ensure you have a modern C++23 compliant toolchain installed (e.g., **LLVM/Clang 16+** or **GCC 13+**).
+
+> **Note on OpenMP Support:**
+> While Pixel Studio automatically builds and runs in **serial fallback mode** if OpenMP is omitted, installing OpenMP support is strongly recommended to unleash full multi-threaded performance on multi-core CPUs.
+
+> **Note on Folder Structure & Default Paths:**
+> Pixel Studio relies on relative project paths upon initialization. Place your test input images inside the `defaultDIR/IN/` directory. Exported results target `defaultDIR/OUT/` by default unless overridden via the OS-native FileChooser.
+
+#### 2. Clone & Build (Windows / MSYS2 / Clang)
 
 ```bash
 # Clone the repository
 git clone https://github.com/iibram/PixelStudio.git
 
-# Change directory
+# Change into project root
 cd PixelStudio
 
-# Compile all source files with high-level performance optimization
-g++ -std=c++20 -O2 -march=native -ffast-math src/*.cpp -o main
+# Build third-party dependencies once (ImGui & GLAD)
+clang++ -std=c++23 -O3 -w -isystem "./external/include" -isystem "./external/include/ImGui" -c external/include/ImGui/*.cpp
+clang++ -O3 -w -isystem "./external/include" -c external/include/glad/glad.c
 
-# Run the engine
-./main
+# Move generated .o files to external/lib
+mv *.o external/lib/
+
+# Unter Windows
+cmd: move *.o external\lib\
+
+# Compile Windows resources (Icon)
+windres resources.rc -O coff -o icon.o
+
+# Compile release build with SIMD vectorization and system link flags
+clang++ -std=c++23 -O3 -march=native -ffast-math \
+    -isystem "./external/include" \
+    -I"./include" \
+    src/*.cpp ./external/lib/*.o icon.o \
+    -L"./external/lib" \
+    -fopenmp -lomp -lglfw3 -lopengl32 -lgdi32 -limm32 -lcomdlg32 \
+    -o "./PixelStudio.exe"
+
+# Launch the engine
+./PixelStudio.exe
 ```
 ---
 
-## 🗺️ Future Roadmap
+## 👤 Author & Project Status
 
-### ✅ Done
-- [x] **Core Image I/O Pipeline:** Integrated Sean Barrett’s `stb` library for fast, reliable image decoding, encoding, and dimension scaling.
-- [x] **Optimized Backend Engine (`ImageProcessor`):** Established the YUV+A internal data model, achieving lightning-fast conversions, memory-efficient pointer operations, and sub-millisecond validation loops.
-- [x] **Global Image Operations:** Added standard brightness and contrast adjustments for baseline image enhancement.
-- [x] **Automated Histogram Equalization & Analysis:** Implemented full histogram processing using normalized probability density (PDF) and cumulative distribution functions (CDF) with smart state caching (persisted until image selection changes).
-- [x] **Flexible Image Segmentation:** Added automatic Balanced Histogram Thresholding (BHT) and manual thresholding options, featuring customizable background/foreground masking (`Segm_t` for transparent, solid, or preserved color fills).
-- [x] **Retro Comicify Filter:** Developed a high-performance bit-shift quantization pipeline to transform high-res images into styled retro/comic-art graphics.
+* **Author:** [Ibrahim Ibram](https://github.com/iibram)
+* **Status:** Active Open-Source Project
 
-### 🚀 In Progress / Upcoming
-- [ ] **Dear ImGui Integration:** Implementing the cross-platform GUI view, complete with a unified file-chooser system and real-time canvas rendering.
-- [ ] **Interactive Ad-Hoc Editing:** Immediate visual feedback in the GUI as sliders and adjustments are tweaked.
-- [ ] **Multi-threaded Batch Processing:** A dedicated, cancellable worker-thread system for heavy batch operations that runs safely in the background while keeping the main GUI fully responsive and interactive.
-- [ ] **Advanced Features:** Long-term plans include integrating computer vision techniques such as Image Segmentation and Feature Detection.
+> **Development Note:**
+> PixelStudio is under active evolution. APIs, internal layout IDs, and pipeline methods may be refactored as new multi-scale algorithms (SIFT/SURF) and memory optimizations are integrated.
 
 ---
 
 ## 📄 License
-*Note on licensing for active development:* Even during early-stage or unpolished development phases, applying an open-source license like the MIT License establishes clear usage terms for collaborators and anyone reviewing the codebase.
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
----
-
-# PixelStudio
-
-> **Work in Progress / Active Development**
-> *PixelStudio is a lightweight, high-performance C++ desktop engine for low-latency image processing and computer vision exploration.*
+This project is licensed under the **MIT License** – see the [LICENSE](LICENSE) file for full details.
 
 ---
-
-## 🚀 Overview
-
-PixelStudio is built with a strict **hardware-conscious architecture** philosophy: 0% idle CPU/GPU usage when static, zero frame-delay latency, and deterministic UI layouts. It provides an intuitive environment for real-time image manipulation, spatial filter design, and color space analytics.
-
-While the project is currently in **active development** (Alpha status), the core framework, window/event pipeline, custom UI architecture, and baseline image buffer conversions are production-ready.
-
----
-
-## ✨ Current Features & Technical Highlights
-
-- **Event-Driven Event Loop:** Custom GLFW + OpenGL 3.3 integration utilizing `glfwWaitEvents()` for zero power waste in idle states.
-- **High-DPI Dynamic Scaling:** Multi-monitor aware scaling for fonts, UI paddings, and window limits down to pixel-perfect baseline alignments.
-- **Multi-Tab Workspace:** Clean tab management with real-time metadata inspects (file paths, dimensions, uncompressed memory consumption).
-- **Image Processing Pipeline:** Real-time buffer manipulations (RGBA, YUV) and spatial filter kernels.
-- **Deterministic UI Constraints:** Centered initializations, bounded window scaling, and responsive tooltips without thread/frame latches.
-
----
-
-## 🛠️ Tech Stack & Dependencies
-
-* **Language:** C++20 / C++23
-* **Graphics API:** OpenGL 3.3 Core Profile (GLAD)
-* **Windowing & Input:** GLFW3
-* **GUI Engine:** Dear ImGui
-* **Build System:** CMake / Clang / GCC
-
----
-
-## 📋 Roadmap & Upcoming Improvements
-
-- [ ] Fine-tuning gradient derivative representations ($I_x$ & $I_y$ views with neutral `0.5f` offset).
-- [ ] Advanced edge detection & feature extraction modules (Harris Corner / SIFT concepts).
-- [ ] OpenMP accelerated parallel filter pipelines.
-- [ ] Refactoring of extended UI panels & parameter sliders.
-
----
-
-## 👤 Author & Status
-
-Developed by **Ibrahim Ibram**
-*PixelStudio is an active open-source side project. APIs, internal layout IDs, and pipeline methods are subject to refactoring as features evolve.*
-
-
-======================================================================
--->

@@ -2,10 +2,12 @@
 #include "SysInfo.hpp"
 #include "Types.hpp"
 
+#include "stb/stb_image.h"
 #include "ImGui/imgui_impl_glfw.h"
 #include "ImGui/imgui_impl_opengl3.h"
 
 #include <iostream>
+#include <locale>
 
 
 
@@ -60,6 +62,8 @@ namespace PixelStudio
 	// =============================================================   P  R  I  V  A  T  E   =============================================================
 	// ===================================================================================================================================================
 
+
+
 	// ===================================================================================================================================================
 	// -------------------------------------------------  The Essential GUI Pipeline (+ Initialization)  -------------------------------------------------
 	// ===================================================================================================================================================
@@ -111,6 +115,24 @@ namespace PixelStudio
 			return;
 		}
 
+		// --------------------------------- app icon ---------------------------------
+		GLFWimage icons[3];
+		int channels = 0;
+
+		icons[0].pixels = stbi_load("res/assets/icons/icon_256.png", &icons[0].width, &icons[0].height, &channels, 4);
+		icons[1].pixels = stbi_load("res/assets/icons/icon_32.png", &icons[1].width, &icons[1].height, &channels, 4);
+		icons[2].pixels = stbi_load("res/assets/icons/icon_16.png", &icons[2].width, &icons[2].height, &channels, 4);
+
+		if (icons[0].pixels && icons[1].pixels && icons[2].pixels)
+		{
+			glfwSetWindowIcon(m_window, 3, icons);
+
+			stbi_image_free(icons[0].pixels);
+			stbi_image_free(icons[1].pixels);
+			stbi_image_free(icons[2].pixels);
+		}
+		// ----------------------------------------------------------------------------
+
 		// hard constraints (min. size 1280 x 720 at a FullHD resolution)
 		glfwSetWindowSizeLimits(m_window, UI::SCALED_W, UI::SCALED_H, GLFW_DONT_CARE, GLFW_DONT_CARE);
 
@@ -120,8 +142,8 @@ namespace PixelStudio
 
 			if (mode)
 			{
-				int xpos = ((mode->width - UI::SCALED_W) >> 1);												// calculate the center at x axis
-				int ypos = ((mode->height - UI::SCALED_H) >> 1);											// calculate the center at y axis
+				int xpos = ((mode->width - UI::SCALED_W) >> 1);											// calculate the center at x axis
+				int ypos = ((mode->height - UI::SCALED_H) >> 1);										// calculate the center at y axis
 
 				glfwSetWindowPos(m_window, xpos, ypos);													// drop the window centered on the screen
 			}
@@ -134,6 +156,8 @@ namespace PixelStudio
 			res.logs.push_back({TextCode::GLAD_Init_Failed, {}});										// success = false
 			return;
 		}
+
+		// FRÜHER HIER GEWESEN !!!
 
 		glfwSwapInterval(1);																			// 1 = V-Sync /w monitor-FPS (e.g. 60 Hz = 60 FPS)
 
@@ -159,61 +183,6 @@ namespace PixelStudio
 		glClear(GL_COLOR_BUFFER_BIT);
 
 		res.success = true;
-	}
-
-	/**
-	 * @brief Queries GPU infos by OpenGL. Captures the vendor, renderer and the available VRAM at start for this app of the systems GPU.
-	 */
-	void PixelStudioApp::queryGPUInfo()
-	{
-		const GLubyte* vendorStr   = glGetString(GL_VENDOR);
-		const GLubyte* rendererStr = glGetString(GL_RENDERER);
-
-		if (vendorStr)	 m_GPU.vendorStr   = reinterpret_cast<const char*>(vendorStr);
-		if (rendererStr) m_GPU.rendererStr = reinterpret_cast<const char*>(rendererStr);
-
-		// NVIDIA: Check initial free VRAM available for this app
-		if (m_GPU.vendorStr.find("NVIDIA") != std::string::npos)
-		{
-			m_GPU.vendor = GPU_Vendor::NVIDIA;
-			GLint freeKb = 0;
-			glGetIntegerv(GL_GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX, &freeKb);
-			if (freeKb > 0)
-				m_GPU.avail_VRAM = static_cast<float>(freeKb) * BYTES_TO_KB;
-		}
-
-		// AMD | ATI: Check initial free VRAM available for this app
-		else if (m_GPU.vendorStr.find("AMD") != std::string::npos || m_GPU.vendorStr.find("ATI") != std::string::npos)
-		{
-			m_GPU.vendor = GPU_Vendor::AMD;
-			GLint memInfo[4] = {0};
-			glGetIntegerv(GL_VBO_FREE_MEMORY_ATI, memInfo);
-			if (memInfo[0] > 0)
-				m_GPU.avail_VRAM = static_cast<float>(memInfo[0]) * BYTES_TO_KB;
-		}
-		// Intel (OpenGL doesn't support reliable extensions fo Intel)
-		else if (m_GPU.vendorStr.find("Intel") != std::string::npos)
-		{
-			m_GPU.vendor = GPU_Vendor::Intel;
-			m_GPU.avail_VRAM = -1.0f;
-		}
-	}
-
-	void PixelStudioApp::refreshAvailVRAM()
-	{
-		if (m_GPU.vendor == GPU_Vendor::NVIDIA)
-		{
-			GLint freeKb = 0;
-			glGetIntegerv(GL_GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX, &freeKb);
-			m_GPU.avail_VRAM = static_cast<float>(freeKb) * BYTES_TO_KB;
-		}
-		else if (m_GPU.vendor == GPU_Vendor::AMD)
-		{
-			GLint memInfo[4];
-			glGetIntegerv(GL_VBO_FREE_MEMORY_ATI, memInfo);
-			// memInfo[0] liefert den freien VRAM in kB
-			m_GPU.avail_VRAM = static_cast<float>(memInfo[0]) * BYTES_TO_KB;
-		}
 	}
 
 	/**
@@ -270,7 +239,9 @@ namespace PixelStudio
 	}
 
 	/**
-	 * @brief Each frame ends here. The actual graphical rednering by the GPU is happening here
+	 * @brief Each frame ends here. The actual graphical rendering by the GPU happens here.
+	 * Additionally, this function houses synchronizations and the available VRAM tracking feature, since the necessary acquisition of display dimensions
+	 * takes place here anyway.
 	 */
 	void PixelStudioApp::endFrame()
 	{
@@ -281,6 +252,40 @@ namespace PixelStudio
 		glfwGetFramebufferSize(m_window, &display_w, &display_h);
 		glViewport(0, 0, display_w, display_h);
 
+		// ----------------------------------------------------------------------------
+		//  			VRAM Window-Resize Delta Tracking (Zero-Overhead)
+		// ----------------------------------------------------------------------------
+		static int last_w = display_w;
+		static int last_h = display_h;
+
+		// helper lambda: Exact framebuffer size in MB
+		// (RGBA8 Color Buffer + Depth/Stencil Buffer = 8 Bytes/Pixel * 2 (Double Buffer))
+		auto calcFramebufferVRAM = [](int w, int h) -> float {
+			constexpr float BYTES_PER_PIXEL = 8.0f;
+			constexpr float BUFFER_COUNT    = 2.0f; // Front & Back Buffer
+			return (static_cast<float>(w * h) * BYTES_PER_PIXEL * BUFFER_COUNT) * BYTES_TO_MB;
+		};
+
+		// start calculating from frame 2
+		if (!m_firstFrame)
+		{
+			if (display_w != last_w || display_h != last_h)
+			{
+				// calculate exact VRAM usage for OLD and NEW size
+				float old_fb_vram = calcFramebufferVRAM(last_w, last_h);
+				float new_fb_vram = calcFramebufferVRAM(display_w, display_h);
+
+				// extract the delta
+				float vram_delta = new_fb_vram - old_fb_vram;
+
+				// adjust VRAM budget
+				m_GPU.avail_VRAM -= vram_delta;
+
+				last_w = display_w;
+				last_h = display_h;
+			}
+		}
+
 		// dynamically clearing /w the current ImGui Theme
 		ImVec4 bg = ImGui::GetStyle().Colors[ImGuiCol_WindowBg];
 		glClearColor(bg.x, bg.y, bg.z, bg.w);
@@ -290,9 +295,21 @@ namespace PixelStudio
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 		glfwSwapBuffers(m_window);
 
-		if (m_firstFrame)																				// only at first frame
+		// ----------------------------------------------------------------------------
+		// 					  Startup Initialization (Frame 1 Sync)
+		// ----------------------------------------------------------------------------
+		if (m_firstFrame)
 		{
-			glfwShowWindow(m_window);																	// show first frame /wo stuttering
+			glfwShowWindow(m_window);						// show synced first frame
+
+			updateAvailVRAM(VRAM::UPDATE_AVAIL_VRAM);
+			m_GPU.avail_VRAM -= 2.0f;						// 2 MB baseline adjustment
+			m_GPU.total_VRAM = m_GPU.avail_VRAM;			// Synchronize
+
+			// Set baseline for resize monitoring exactly to the initial framebuffer
+			last_w = display_w;
+			last_h = display_h;
+
 			m_firstFrame = false;
 		}
 	}
@@ -485,14 +502,15 @@ namespace PixelStudio
 		ImGui::BeginChild("SelectorPanel", ImVec2(UI::Selector_W, m_mainContentSize.y), true, noScrollbar);
 		{
 			// calculate the SelectorPanel positioning of the TOP SECTION and LOG SECTION
-			float collapsedLogHeight = UI::em + UI::Padding.x;
-			float reservedLogHeight  = m_isLogOpen ? UI::OpenLog_H : collapsedLogHeight;
+			const float collapsedLogHeight = UI::em + UI::Padding.x;
+			const float reservedLogHeight  = m_isLogOpen ? UI::OpenLog_H : collapsedLogHeight;
 
-			float topHeight = ImGui::GetContentRegionAvail().y - UI::Padding.y - reservedLogHeight;
-			topHeight = std::max(1.0f, topHeight);
+			float topH = ImGui::GetContentRegionAvail().y - UI::Padding.y - reservedLogHeight;
+			const float topHeight	= std::max(1.0f, topH);
+			const float fullAvail_W = ImGui::GetContentRegionAvail().x;
 
-			const ImVec2 applyBtnDim = ImVec2(UI::ApplyBtn_W, 0.0f);
-			const ImVec2 fullBtnDim  = ImVec2(UI::FullBtn_W, 0.0f);
+			const ImVec2 fullBtnDim = ImVec2(fullAvail_W, 0.0f);
+			ImVec2 applyBtnDim;
 
 			// ==================================================================================================================
 			// 										 T O P   C O N T R O L   S E C T I O N
@@ -518,12 +536,14 @@ namespace PixelStudio
 				// ---------------------------------  ADD INTENSITY  -----------------------------------
 				if (ImGui::TreeNodeEx("Intesity (additive)##Node", treeFlags))
 				{
-					ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
+					ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, UI::Line);
 					ImGui::SetNextItemWidth(UI::SliderA_W);
 					ImGui::SliderFloat("##AddIntesitySlider", &s.addIntensity, -1.0f, 1.0f, "%.1f", noInput);
 					ImGui::PopStyleVar();
 
 					ImGui::SameLine();
+					applyBtnDim  = ImVec2(ImGui::GetContentRegionAvail().x, 0.0f);						// set applyBtnDim dynamically (right end)
+
 					if (ImGui::Button("apply##AddIntensity", applyBtnDim))
 					{
 						Result res = m_processor.addIntensity(s.addIntensity);
@@ -537,7 +557,7 @@ namespace PixelStudio
 				// --------------------------------  SCALE INTENSITY  ----------------------------------
 				if (ImGui::TreeNodeEx("Intesity (scaled)##Node", treeFlags))
 				{
-					ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
+					ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, UI::Line);
 					ImGui::SetNextItemWidth(UI::SliderA_W);
 					ImGui::SliderFloat("##ScaleIntesitySlider", &s.sclIntensity, -1.0f, 1.0f, "%.1f", noInput);
 					ImGui::PopStyleVar();
@@ -556,7 +576,7 @@ namespace PixelStudio
 				// -----------------------------------  CONTRAST  --------------------------------------
 				if (ImGui::TreeNodeEx("Contrast##Node", treeFlags))
 				{
-					ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
+					ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, UI::Line);
 					ImGui::SetNextItemWidth(UI::SliderA_W);
 					ImGui::SliderFloat("##ContrastSlider", &s.contrast, 0.0f, 3.0f, "%.1f", noInput);
 					ImGui::PopStyleVar();
@@ -575,7 +595,8 @@ namespace PixelStudio
 				// -----------------------------------  POSTERIZE  -------------------------------------
 				if (ImGui::TreeNodeEx("Posterize##Node", treeFlags))
 				{
-					ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
+					//ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
+					ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, UI::Line);
 					ImGui::SetNextItemWidth(UI::SliderA_W);
 					ImGui::SliderScalar("##PosterizeSlider", ImGuiDataType_U8, &s.exp, &expMin, &expMax, "%u", noInput);
 					ImGui::PopStyleVar();
@@ -594,7 +615,7 @@ namespace PixelStudio
 				// -----------------------------------  SET ALPHA  -------------------------------------
 				if (ImGui::TreeNodeEx("Set Alpha##Node", treeFlags))
 				{
-					ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
+					ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, UI::Line);
 					ImGui::SetNextItemWidth(UI::SliderA_W);
 					ImGui::SliderFloat("##SetAlphaSlider", &s.alpha, 0.0f, 1.0f, "%.2f", noInput);
 					ImGui::PopStyleVar();
@@ -617,7 +638,7 @@ namespace PixelStudio
 					if (s.keepCol) segmType |= FOREGROUND_KEEP_COLOR;
 					if (s.transBg) segmType |= BACKGROUND_TRANSPARENT;
 
-					ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
+					ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, UI::Line);
 					ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, UI::CheckVec2);
 
 					ImGui::Indent(UI::Padding.x);
@@ -650,7 +671,7 @@ namespace PixelStudio
 					if (s.keepCol_Auto) autoSegmType |= FOREGROUND_KEEP_COLOR;
 					if (s.transBg_Auto) autoSegmType |= BACKGROUND_TRANSPARENT;
 
-					ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
+					ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, UI::Line);
 					ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, UI::CheckVec2);
 					ImGui::Indent(UI::Padding.x);
 					ImGui::Checkbox("Keep FG Color##AutoSegm", &s.keepCol_Auto);
@@ -708,7 +729,9 @@ namespace PixelStudio
 				const bool isIyyActive = (m_inspectionData.texIyy != 0 && m_activeTexID == m_inspectionData.texIyy);
 				const bool isIxyActive = (m_inspectionData.texIxy != 0 && m_activeTexID == m_inspectionData.texIxy);
 
-				const ImVec2 inspectBtnDim = ImVec2(UI::InpectBtn_W, 0.0f);
+				float spacing  = ImGui::GetStyle().ItemSpacing.x;
+				float colWidth = std::floor((fullAvail_W - spacing) * 0.5f);
+				const ImVec2 leftDim = ImVec2(colWidth, 0.0f);
 
 				ImGui::Spacing();
 				ImGui::Separator();
@@ -724,23 +747,47 @@ namespace PixelStudio
 					// -----------------------------------------------------------------------------------
 					ImGui::BeginDisabled(!isInspectionActive);
 
-					if (UI::ToggleButton("Show Ix", isIxActive, inspectBtnDim))
+					if (UI::ToggleButton("Show Ix", isIxActive, leftDim))
 						m_activeTexID = isIxActive ? origTexID : m_inspectionData.getOrFetchIx();
 					ImGui::SameLine();
-					if (UI::ToggleButton("Show Iy", isIyActive, inspectBtnDim))
+					ImVec2 rightDim = ImVec2(ImGui::GetContentRegionAvail().x, 0.0f);					// set right inspection btn width dynamically
+					if (UI::ToggleButton("Show Iy", isIyActive, rightDim))
 						m_activeTexID = isIyActive ? origTexID : m_inspectionData.getOrFetchIy();
 
-					if (UI::ToggleButton("Show Ixx", isIxxActive, inspectBtnDim))
+					if (UI::ToggleButton("Show Ixx", isIxxActive, leftDim))
 						m_activeTexID = isIxxActive ? origTexID : m_inspectionData.getOrFetchIxx();
 					ImGui::SameLine();
-					if (UI::ToggleButton("Show Iyy", isIyyActive, inspectBtnDim))
+					if (UI::ToggleButton("Show Iyy", isIyyActive, rightDim))
 						m_activeTexID = isIyyActive ? origTexID : m_inspectionData.getOrFetchIyy();
 
-					if (UI::ToggleButton("Show Ixy", isIxyActive, inspectBtnDim))
+					if (UI::ToggleButton("Show Ixy", isIxyActive, leftDim))
 						m_activeTexID = isIxyActive ? origTexID : m_inspectionData.getOrFetchIxy();
+					ImGui::SameLine();
+					ImGui::SetNextItemWidth(rightDim.x);
+					ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, UI::Line);
+					ImGui::SliderFloat("##dot_color", &s.harr_ColorHue, 0.0f, 1.0f, "Color");
+					// ImGui::PopStyleVar();
+
+					// -----------------------------------------------------------------------------------
+					// 								   Keypoints Control
+					// -----------------------------------------------------------------------------------
+					ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, UI::CheckVec2);
+					ImGui::Checkbox("Render Keypoints", &s.harr_Keypoints);
+
+					ImGui::SameLine(); ImGui::TextDisabled(" num pts:"); ImGui::SameLine();
+					ImGui::SetCursorPosX(ImGui::GetCursorPosX() + UI::Line - ImGui::GetStyle().ItemSpacing.x);
+					ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+
+					ImGui::PushFont(UI::InfoFont);
+					ImGui::InputText("##kpts_count",
+									 const_cast<char*>(std::format(std::locale(""), "{:>11L}", m_inspectionData.keypoints.size()).c_str()),
+									 12, ImGuiInputTextFlags_ReadOnly);
+					ImGui::PopFont();
+
+					ImGui::PopStyleVar(2); // Line, CheckVec2
+					// -----------------------------------------------------------------------------------
 
 					ImGui::EndDisabled();
-
 					ImGui::Spacing();
 
 					// -----------------------------------------------------------------------------------
@@ -752,26 +799,36 @@ namespace PixelStudio
 					ImGui::SliderFloat("Sigma (\u03C3)", &s.harr_Sigma, 0.5f, 5.0f, "%.1f", noInput);
 
 					ImGui::SliderFloat("##kFactor", &s.harr_kFac, 0.01f, 0.10f, "%.3f", noInput);
+					if (isInspectionActive && ImGui::IsItemDeactivatedAfterEdit())
+					{
+						// complete Harris calculation when Harris active & k-factor slider moved !
+						m_activeTexID = m_tabs[m_IDX].texID;													// swap texID to original image
+						Result res = m_processor.applyHarrisXY(s.harr_Sigma, s.harr_kFac, s.harr_Thresh);
+						setNextLog(res);
+
+						if (res.success)
+							m_inspectionData.setupHarris(m_tabs[m_IDX].width, m_tabs[m_IDX].height);
+					}
 					ImGui::SameLine(UI::SliderB_W + ImGui::GetStyle().ItemInnerSpacing.x);
 					ImGui::AlignTextToFramePadding();
 					ImGui::PushFont(UI::MathFont); ImGui::Text("k"); ImGui::PopFont();
 					ImGui::SameLine(0.0f, 0.0f);
 					ImGui::Text("-Factor");
 
-					ImGui::SliderFloat("threshold", &s.harr_Thresh, 0.05f, 8.0f, "%.2f", noInput | log);
+					// quick new keypoint calculation when Harris active
+					ImGui::SliderFloat("threshold", &s.harr_Thresh, 0.05f, 10.0f, "%.2f", noInput | log);
 					if (isInspectionActive && ImGui::IsItemDeactivatedAfterEdit())
-						m_inspectionData.updateThreshold(s.harr_Thresh);
-
+					{
+						Result res;
+						m_inspectionData.updateThreshold(res, s.harr_Thresh);
+						setNextLog(res);
+					}
 					ImGui::PopItemWidth(); // SliderB_W
+					ImGui::PopStyleVar(); // Line
 
-					ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, UI::CheckVec2);
-					ImGui::Checkbox("Render Keypoints", &s.harr_Keypoints);
-					ImGui::PopStyleVar(2); // Line, CheckVec2
-					ImGui::SameLine();
-					ImGui::Text(" (#pts: %zu)", m_inspectionData.keypoints.size());
+					ImGui::Spacing();
 
-
-					// -----------------------------------------------------------------------------------
+					// ---------------------- Harris Corner Detection Compute Button ---------------------
 					ImGui::BeginDisabled(isInspectionActive);
 
 					if (ImGui::Button("Compute Detection", fullBtnDim))
@@ -872,9 +929,9 @@ namespace PixelStudio
 
 				if (m_activeTexID != 0 && tab.width > 0 && tab.height > 0)
 				{
-					float w = static_cast<float>(tab.width), h = static_cast<float>(tab.height);
+					float img_w = static_cast<float>(tab.width), img_h = static_cast<float>(tab.height);
 
-					float imageAspect  = w / h;
+					float imageAspect  = img_w / img_h;
 					float regionAspect = m_renderSize.x / m_renderSize.y;
 
 					ImVec2 finalSize;
@@ -896,7 +953,7 @@ namespace PixelStudio
 					ImGui::SetCursorPos(ImVec2(m_renderPos.x + offsetX, m_renderPos.y + offsetY));		// set the offset onto the pre-calculated renderPos
 
 					ImVec2 imgStartPos = ImGui::GetCursorScreenPos();									// save image start position and
-					float imgScale		= finalSize.x / w;												// the scale for KEYPOINT OVERLAY
+					float imgScale	   = finalSize.x / img_w;											// the scale for KEYPOINT OVERLAY
 
 					ImGui::Image((ImTextureID)(uintptr_t)m_activeTexID, finalSize);						// render the image
 
@@ -906,14 +963,19 @@ namespace PixelStudio
 					if (m_inspectionData.stamp == tab.stamp && !keypoints.empty() && tab.settings.harr_Keypoints)
 					{
 						ImDrawList* drawList = ImGui::GetWindowDrawList();
-						const ImU32 dotColor = IM_COL32(255, 0, 0, 255);
+						ImVec4 color   = UI::GetKeypointColor(tab.settings.harr_ColorHue);
+						ImU32 dotColor = ImGui::ColorConvertFloat4ToU32(color);
 						const float dotRadius = 2.5f;
 
 						for (const auto& kp : keypoints)
 						{
+							// hit the pixel center: Add +0.5f to kp.x and kp.y before scaling
+							const float centerImageX = static_cast<float>(kp.x) + 0.5f;
+							const float centerImageY = static_cast<float>(kp.y) + 0.5f;
+
 							// imgStartPos and imgScale always refer to the currently rendered texture rectangle
-							const float screenX = imgStartPos.x + (static_cast<float>(kp.x) * imgScale);
-							const float screenY = imgStartPos.y + (static_cast<float>(kp.y) * imgScale);
+							const float screenX = imgStartPos.x + (centerImageX * imgScale);
+							const float screenY = imgStartPos.y + (centerImageY * imgScale);
 
 							drawList->AddCircleFilled(ImVec2(screenX, screenY), dotRadius, dotColor);
 						}
@@ -967,31 +1029,25 @@ namespace PixelStudio
 			ImGui::SameLine();
 
 			// -------------------------------------------------------------------------------------
-			// append: used VRAM Info of this app (colored)
+			// append: used VRAM info of this app (colored)
 			// -------------------------------------------------------------------------------------
 			if (m_GPU.avail_VRAM > 0.0f)
 			{
 				float ratio = m_GPU.used_VRAM / m_GPU.avail_VRAM;
 				ImVec4 statusColor;
 
-				if (ratio < 0.50f)		statusColor = UI::VRAM_GOOD;
-				else if (ratio < 0.80f) statusColor = UI::VRAM_WARN;
+				if (ratio < 0.60f)		statusColor = UI::VRAM_GOOD;
+				else if (ratio < 0.85f) statusColor = UI::VRAM_WARN;
 				else					statusColor = UI::VRAM_ALERT;
 
-				ImGui::TextColored(statusColor, "VRAM used: %.2f / %.0f MB (%s)", m_GPU.used_VRAM, m_GPU.avail_VRAM, m_GPU.rendererStr.c_str());
+				ImGui::TextColored(statusColor, "VRAM used: %.2f / %.2f MB (%s)", m_GPU.used_VRAM, m_GPU.avail_VRAM, m_GPU.rendererStr.c_str());
 
-				// 2. Prüfen, ob der gerade gerenderte Text gehovert oder geklickt wird
 				if (ImGui::IsItemHovered())
 				{
-					ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);										// switch mouse cursor to hand symbol
-
-					// shwo tooltip
+					// show tooltip
 					ImGui::BeginTooltip();
-					ImGui::TextUnformatted("Click to recalculate / refresh total VRAM");
+					ImGui::Text("Total VRAM @app_start: %.2f MB", m_GPU.total_VRAM);
 					ImGui::EndTooltip();
-
-					if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
-						refreshAvailVRAM();
 				}
 			}
 			else
@@ -1061,8 +1117,7 @@ namespace PixelStudio
 				else
 					m_tabs[m_IDX].settings.alpha = 0.5f;
 
-				m_GPU.used_VRAM += toMB(buffer.width, buffer.height);
-				//g_usedVRAM += getMB(buffer.width, buffer.height);
+				updateAvailVRAM(VRAM::ALLOC, buffer.width, buffer.height);
 
 				setNextLog(res);
 			}
@@ -1117,7 +1172,7 @@ namespace PixelStudio
 		if (m_inspectionData.stamp == m_tabs[idx].stamp)												// if inspection data belongs to closing TAB
 			m_inspectionData.clear();																	// clear inspection data
 
-		m_GPU.used_VRAM -= toMB(m_tabs[idx].width, m_tabs[idx].height);
+		updateAvailVRAM(VRAM::DEALLOC, m_tabs[idx].width, m_tabs[idx].height);
 
 		m_tabs.erase(m_tabs.begin() + idx);
 
@@ -1229,6 +1284,87 @@ namespace PixelStudio
 	}
 
 	/**
+	 * @brief Queries GPU infos by OpenGL. Captures the vendor, renderer and the available VRAM at start for this app of the systems GPU.
+	 */
+	void PixelStudioApp::queryGPUInfo()
+	{
+		const GLubyte* vendorStr   = glGetString(GL_VENDOR);
+		const GLubyte* rendererStr = glGetString(GL_RENDERER);
+
+		if (vendorStr)	 m_GPU.vendorStr   = reinterpret_cast<const char*>(vendorStr);
+		if (rendererStr) m_GPU.rendererStr = reinterpret_cast<const char*>(rendererStr);
+
+		// NVIDIA: Check initial free VRAM available for this app
+		if (m_GPU.vendorStr.find("NVIDIA") != std::string::npos)
+		{
+			m_GPU.vendor = GPU_Vendor::NVIDIA;
+			GLint freeKb = 0;
+			glGetIntegerv(GL_GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX, &freeKb);
+			if (freeKb > 0)
+				m_GPU.avail_VRAM = m_GPU.total_VRAM = static_cast<float>(freeKb) * BYTES_TO_KB;
+		}
+
+		// AMD | ATI: Check initial free VRAM available for this app
+		else if (m_GPU.vendorStr.find("AMD") != std::string::npos || m_GPU.vendorStr.find("ATI") != std::string::npos)
+		{
+			m_GPU.vendor = GPU_Vendor::AMD;
+			GLint memInfo[4] = {0};
+			glGetIntegerv(GL_VBO_FREE_MEMORY_ATI, memInfo);
+			if (memInfo[0] > 0)
+				m_GPU.avail_VRAM = m_GPU.total_VRAM = static_cast<float>(memInfo[0]) * BYTES_TO_KB;
+		}
+		// Intel (OpenGL doesn't support reliable extensions fo Intel)
+		else if (m_GPU.vendorStr.find("Intel") != std::string::npos)
+		{
+			m_GPU.vendor = GPU_Vendor::Intel;
+			m_GPU.avail_VRAM = -1.0f;
+		}
+	}
+
+	/**
+	 * @brief Calculates the actual used byte size on the VRAM by images & inspection data of this app
+	 * @param w width of the corresponding image
+	 * @param h height of the corresponding image
+	 * @param access_mode to VRAM calculations {ALLOC, DEALLOC}
+	 */
+	void PixelStudioApp::updateAvailVRAM(VRAM access_mode, int w, int h)
+	{
+		// perform manual calculations instead of simply using the OpenGL API
+		if (access_mode == VRAM::ALLOC)
+		{
+			float amount = toMB(w, h);
+			m_GPU.used_VRAM  += amount;
+			m_GPU.avail_VRAM -= amount;
+			//m_GPU.avail_VRAM = m_GPU.total_VRAM - m_GPU.used_VRAM;
+		}
+
+		else if (access_mode == VRAM::DEALLOC)
+		{
+			float amount	  = toMB(w, h);
+			m_GPU.used_VRAM  -= amount;
+			m_GPU.avail_VRAM += amount;
+			//m_GPU.used_VRAM -= toMB(w, h);
+		}
+
+		else
+		{
+			// getting the current available VRAM via OpenGL API
+			if (m_GPU.vendor == GPU_Vendor::NVIDIA)
+			{
+				GLint freeKb = 0;
+				glGetIntegerv(GL_GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX, &freeKb);
+				m_GPU.avail_VRAM = static_cast<float>(freeKb) * BYTES_TO_KB;
+			}
+			else if (m_GPU.vendor == GPU_Vendor::AMD)
+			{
+				GLint memInfo[4];
+				glGetIntegerv(GL_VBO_FREE_MEMORY_ATI, memInfo);
+				m_GPU.avail_VRAM = static_cast<float>(memInfo[0]) * BYTES_TO_KB;							// memInfo[0] returns the free VRAM in kB
+			}
+		}
+	}
+
+	/**
 	 * @brief Calculates and returns the corresponding size in Megabytes of the given parameters.
 	 * @param w the width of the image
 	 * @param h the height of the image
@@ -1236,7 +1372,7 @@ namespace PixelStudio
 	 */
 	constexpr float PixelStudioApp::toMB(const int w, const int h) noexcept
 	{
-		return static_cast<float>((static_cast<size_t>(w) * h) << 2) * BYTES_TO_MB;
+		return static_cast<float>(static_cast<size_t>(w * h) << 2) * BYTES_TO_MB;
 	}
 
 
@@ -1292,7 +1428,7 @@ namespace PixelStudio
 		if (texIxy != 0) { glDeleteTextures(1, &texIxy); texIxy = 0; ++cnt; }
 
 		if (cnt > 0)
-			app.m_GPU.used_VRAM -= app.toMB(cnt * width, height);
+			app.updateAvailVRAM(VRAM::DEALLOC, cnt * width, height);
 
 		keypoints.clear();
 		keypoints.shrink_to_fit();
@@ -1336,11 +1472,10 @@ namespace PixelStudio
 	 * @brief
 	 * @param threshold
 	 */
-	void PixelStudioApp::InspectionData::updateThreshold(float threshold)
+	void PixelStudioApp::InspectionData::updateThreshold(Result& res, float threshold)
 	{
-		auto pts = app.m_processor.getKeypoints(threshold);
+		auto pts = app.m_processor.getKeypoints(res, threshold);
 		keypoints.assign(pts.begin(), pts.end());
-
 	}
 
 	/**
@@ -1376,7 +1511,7 @@ namespace PixelStudio
 
 		glBindTexture(GL_TEXTURE_2D, 0);
 
-		app.m_GPU.used_VRAM += app.toMB(width, height);
+		app.updateAvailVRAM(VRAM::ALLOC, width, height);
 
 		return texID;
 	}

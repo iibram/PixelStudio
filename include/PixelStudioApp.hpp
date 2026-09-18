@@ -54,16 +54,24 @@ namespace PixelStudio
 
 
 	private:
-		inline static constexpr float INV_1024       = 1.0f / 1024.0f;						// Base constants for memory conversions
-		inline static constexpr float BYTES_TO_KB    = INV_1024;							// 1D: Bytes -> Kilobytes (e.g., for buffers or line lengths)
-		inline static constexpr float BYTES_TO_MB    = INV_1024 * INV_1024;					// 2D: Bytes -> Megabytes (e.g., for 2D textures & FBOs)
+		inline static constexpr float INV_10K	  = 1.0f / 1000.0f;
+		inline static constexpr float INV_1024	  = 1.0f / 1024.0f;						// Base constants for memory conversions
+		inline static constexpr float BYTES_TO_KB = INV_1024;							// 1D: Bytes -> Kilobytes (e.g., for buffers or line lengths)
+		inline static constexpr float BYTES_TO_MB = INV_1024 * INV_1024;					// 2D: Bytes -> Megabytes (e.g., for 2D textures & FBOs)
 
 		inline static uint32_t g_tabID = 0;													// global tabID counter
+
+		inline static ImVec2 s_winDIM = ImVec2(0.0f, 0.0f);									// current dimension of the app windows
 
 		/**
 		 * @brief GPU vendor identier
 		 */
 		enum GPU_Vendor : uint8_t { UNKNOWN, NVIDIA, AMD, Intel };
+
+		/**
+		 * @brief The mode of VRAM access
+		 */
+		enum VRAM : uint8_t { UPDATE_AVAIL_VRAM, ALLOC, DEALLOC };
 
 		/**
 		 * @brief GPU Information Struct & Detection
@@ -74,6 +82,7 @@ namespace PixelStudio
 			std::string rendererStr = "Unknown";
 			float used_VRAM	  = 0.0f;
 			float avail_VRAM  = 0.0f;
+			float total_VRAM  = 0.0f;
 			GPU_Vendor vendor = GPU_Vendor::UNKNOWN;
 		};
 
@@ -90,6 +99,7 @@ namespace PixelStudio
 			float harr_Sigma	= 1.00f;
 			float harr_kFac		= 0.04f;
 			float harr_Thresh	= 1.00f;
+			float harr_ColorHue = 0.00f;
 
 			uint8_t exp			= 4;
 			bool keepCol		= false;
@@ -151,7 +161,7 @@ namespace PixelStudio
 			GLuint getOrFetchIyy();
 			GLuint getOrFetchIxy();
 
-			void updateThreshold(float threshold);
+			void updateThreshold(Result& res, float threshold);
 
 			[[nodiscard]] std::span<const Keypoint> getKeypoints() const noexcept { return keypoints; };
 
@@ -192,8 +202,6 @@ namespace PixelStudio
 
 
 		void init(Result & res);
-		void queryGPUInfo();
-		void refreshAvailVRAM();
 
 		void beginFrame();
 		void renderUI();
@@ -217,6 +225,8 @@ namespace PixelStudio
 		void updateBuffer(const ImageBufferView& buff);
 		void setNextPopup(const Result& res, TextCode header, TextCode footer);
 
+		void queryGPUInfo();
+		void updateAvailVRAM(VRAM access_mode, int w = 0, int h = 0);
 		[[nodiscard]] constexpr float toMB(const int w, const int h) noexcept;
 	};
 }

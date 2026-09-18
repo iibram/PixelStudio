@@ -2,7 +2,6 @@
 
 #include "Types.hpp"
 
-//#include <iostream>
 #include <version>
 #include <string>
 #include <thread>
@@ -38,7 +37,7 @@ namespace PixelStudio
 	/**
 	 * @brief A tiny cross-platform systems traverser for detecting the OpenMP status, the physical core number and the underlaying visual style
 	 * of the running system (Windows/Linux). Also invokes the systems native file choser for loading / saving files interactivly.
-	 * @note Defines the detected stats for the compiler, for compiling just the neccessary lines matching the running systems. <<<<<<<<<<<<< TODO
+	 * @note Defines the detected stats for the compiler, for compiling just the neccessary lines matching the running systems.
 	 */
 	namespace SysInfo
 	{
@@ -98,7 +97,7 @@ namespace PixelStudio
 
 		/**
 		 * @brief Traverses the specified OS and tries to get and return the physical core number of the system.
-		 * @return the detected (or fallback) optimal number of threads to run OpenMP loops in `uint8_t`
+		 * @return the detected (or fallback) optimal number of threads to run OpenMP loops
 		 */
 		inline uint8_t getPhysicalCoreNum()
 		{
@@ -142,7 +141,7 @@ namespace PixelStudio
 		/**
 		 * @brief Calculates and return the optimal chunk size for the passed data structure size in bytes.
 		 * @param struct_size_in_bytes size in bytes of the target data structure
-		 * @return the optimal chunk size in bytes as an `unit16_t`
+		 * @return the optimal chunk size in bytes as an `uint16_t` type
 		 */
 		inline uint16_t getChunkSize(uint8_t struct_size_in_bytes)
 		{
@@ -314,7 +313,7 @@ namespace PixelStudio
 			DWORD data = 0;
 			DWORD dataSize = sizeof(data);
 
-			// Prüft die Windows-Einstellung für Apps (0 = Dark, 1 = Light)
+			// checks Windows setups for apps (0 = Dark, 1 = Light)
 			LONG result = RegGetValueA(
 				HKEY_CURRENT_USER,
 				"Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",

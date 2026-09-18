@@ -31,9 +31,6 @@ namespace PixelStudio::UI
 	inline static float Padding_X2;														// DPI scaled width for 2 times the size of Padding.x
 	inline static float SliderA_W;														// DPI scaled width for the sliders in Global Manips.
 	inline static float SliderB_W;														// DPI scaled width for the sliders in Local Manips.
-	inline static float FullBtn_W;														// DPI scaled width for the full length apply buttons
-	inline static float ApplyBtn_W;														// DPI scaled width for the apply buttons
-	inline static float InpectBtn_W;													// DPI scaled width for the inspection buttons
 	inline static float SpcShortcut;													// DPI scaled spacing for the shortcut text (MenuItem)
 	inline static float BtnRadius;														// CustomTabButton & Mode Switcher radius
 	inline static float Line;															// DPI scaled Line thickness
@@ -64,26 +61,23 @@ namespace PixelStudio::UI
 	 */
 	inline void scaleDimensions()
 	{
-		Selector_W	= 18.6666f * em;						//  280.0
-		FullBtn_W	= 17.5333f * em;						//  263.0
-		SliderA_W	= 14.4000f * em;						//  216.0
-		SliderB_W	= 13.6000f * em;						//  204.0
-		InpectBtn_W =  8.5000f * em;						//  127.5
-		OpenLog_H	=  5.7333f * em;						//   86.0
-		SpcShortcut	=  4.0000f * em;						//   60.0
-		ApplyBtn_W	=  2.7333f * em;						//   41.0
-		Padding_X3	=  1.6000f * em;						//   24.0
-		InfoBar_H	=  1.3333f * em;						//   20.0
-		Padding_X2	=  1.0666f * em;						//   16.0
-		BtnRadius	=  0.3333f * em;						//    5.0
-		Line_X2		=  0.1333f * em;						//    2.0
-		Line		=  0.0666f * em;						//    1.0
+		Selector_W	= 18.666666f * em;							//  280.0
+		SliderA_W	= 14.400000f * em;							//  216.0
+		SliderB_W	= 13.600000f * em;							//  204.0
+		OpenLog_H	=  5.733333f * em;							//   86.0
+		SpcShortcut	=  4.000000f * em;							//   60.0
+		Padding_X3	=  1.600000f * em;							//   24.0
+		InfoBar_H	=  1.333333f * em;							//   20.0
+		Padding_X2	=  1.066666f * em;							//   16.0
+		BtnRadius	=  0.333333f * em;							//    5.0
+		Line_X2		=  0.133333f * em;							//    2.0
+		Line		=  0.066666f * em;							//    1.0
 
-		TabDimX2	= ImVec2(1.2000f * em, 0.6666f * em);	//   18.0, 10.0
-		TabDim		= ImVec2(0.6000f * em, 0.3333f * em);	//    9.0,  5.0
-		Padding		= ImVec2(0.5333f * em, 0.2666f * em);	//    8.0,  4.0
-		TabDim_Hlf	= ImVec2(0.3000f * em, 0.1666f * em);	//    4.5,  2.5
-		CheckVec2	= ImVec2(0.1333f * em, 0.0333f * em);	//    2.0,  0.5
+		TabDimX2	= ImVec2(1.200000f * em, 0.666666f * em);	//   18.0, 10.0
+		TabDim		= ImVec2(0.600000f * em, 0.333333f * em);	//    9.0,  5.0
+		Padding		= ImVec2(0.533333f * em, 0.266666f * em);	//    8.0,  4.0
+		TabDim_Hlf	= ImVec2(0.300000f * em, 0.166666f * em);	//    4.5,  2.5
+		CheckVec2	= ImVec2(0.133333f * em, 0.033333f * em);	//    2.0,  0.5
 	}
 
 	/**
@@ -92,7 +86,7 @@ namespace PixelStudio::UI
 	 */
 	inline void setFonts(float yScale)
 	{
-		ImGuiIO& io = ImGui::GetIO();																					// get I/O default style
+		ImGuiIO& io = ImGui::GetIO();
 
 		// loading some nice fonts for the UI and scale them by the DPI of the running display
 		BaseFont = io.Fonts->AddFontFromFileTTF("res/assets/fonts/Roboto-Medium.ttf", em);
@@ -121,7 +115,7 @@ namespace PixelStudio::UI
 			ImColor HOVERED  = ImColor(62, 72, 88, 255);								// Buttons & Headers HOVER
 			ImColor CLICKED  = ImColor(80, 95, 120, 255);								// Buttons & Headers CLICK
 			ImColor BORDERS	 = ImColor(42, 46, 52, 255);								// Borders & Separator Lines
-			ImColor FRAME_BG = ImColor(16, 19, 22, 255);								// Sliders & Checkboxes Background
+			ImColor FRAME_BG = ImColor(14, 18, 22, 255);								// Sliders & Checkboxes Background
 
 			// ============================================ Modifications =============================================
 
@@ -215,6 +209,18 @@ namespace PixelStudio::UI
 	}
 
 	/**
+	 * @brief Conversion Helper: Takes hue (0.0 – 1.0) and returns an ImVec4 / ImU32 for OpenGL/Dear ImGui.
+	 * @param hue HSV hue value [0.0, 1.0]
+	 * @return `ImGui::ImVec4` as (r,g,b,1.0f) set accoringly to the passed hue
+	 */
+	inline ImVec4 GetKeypointColor(float hue)
+	{
+		float r = 0.0f, g = 0.0f, b = 0.0f;
+		ImGui::ColorConvertHSVtoRGB(hue, 1.0f, 1.0f, r, g, b);
+		return ImVec4(r, g, b, 1.0f);
+	}
+
+	/**
 	 * @brief Custom MenuItem /w precisely right aligned shortcut text.
 	 * @param label label of the Maneu Item
 	 * @param shortcut label of the shortcut
@@ -294,7 +300,7 @@ namespace PixelStudio::UI
 		if (ImGui::Button("##tabBtn", ImVec2(textSize.x + UI::TabDim.x, totalHeight)))
 			selected = true;
 
-		if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", fName);												// tooltip: Show the full filename on hover!
+		if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", fName);											// tooltip: Show the full filename on hover!
 
 		ImGui::PopStyleColor(3);
 
@@ -385,7 +391,6 @@ namespace PixelStudio::UI
 		// when active -> push the colors onto the button
 		if (isActive)
 		{
-			// Beispiel: Nimmt deine aktiven Theme-Farben (ButtonActive / HeaderActive)
 			ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
 			ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
 			ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered));

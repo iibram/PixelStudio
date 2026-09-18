@@ -218,7 +218,9 @@ namespace PixelStudio
 		return res;
 	}
 
-	// ------------------------------------------------   G l o b a l   i m a g e   p r o c e s s i n g   ------------------------------------------------
+	// ===================================================================================================================================================
+	// 													  G L O B A L   I M A G E   P R O C E S S I N G
+	// ===================================================================================================================================================
 
 	/**
 	 * @brief Manipulates the overall intensity (Y [0, 1]) of the selected image by adding the passed value [-1, 1].
@@ -488,7 +490,8 @@ namespace PixelStudio
 	}
 
 	/**
-	 * @brief Posterizes the selected image using the supplied 2^{exp} value.
+	 * @brief Posterizes the selected image using the supplied 2^{exp} value. This function is performing on RGBA data instead of YUVA, so it must check
+	 * @note This function is performing on RGBA data instead of YUVA, so it must CHECK if the RGBA data belongs to the image this function is called on.
 	 * @param exp the exponent [1, 7] influences the range of aggregated values
 	 * @return `Result` {success, logs}
 	 */
@@ -501,7 +504,7 @@ namespace PixelStudio
 
 		Result res;
 
-
+		// the CHECK
 		if (m_bufferView.stamp != m_images[m_IDX].stamp)
 			toRGBA(res);
 
@@ -518,11 +521,11 @@ namespace PixelStudio
 		#endif
 		for (uint32_t k = 0; k < size; k += 4)
 		{
-			// masking and + center only RGB /wo A
+			// masking and + center only RGB
 			pRGBA[k + 0] = (pRGBA[k + 0] & mask) + center;
 			pRGBA[k + 1] = (pRGBA[k + 1] & mask) + center;
 			pRGBA[k + 2] = (pRGBA[k + 2] & mask) + center;
-		}
+	}
 		m_ms = toMS(clock::now());
 
 		#ifdef PARALLEL_RUN
@@ -541,14 +544,14 @@ namespace PixelStudio
 		m_bufferView.RGBA = std::span<const uint8_t>(m_RGBA.data(), size);
 
 		// also updating the YUVA SoA
-		return toYUVA(res);																		// CDF no longer accurate. toYUVA() sets m_CDF_ID = -1
-	}
+		return toYUVA(res);
+}
 
-	/**
-	 * @brief Sets each Alpha channel value of the image to the passed value in the range [0.0, 1.0].
-	 * @param value `float` value in the range [0.0, 1.0] to set the overall Alpha channel of the image to
-	 * @return `Result` {success, logs}
-	 */
+/**
+ * @brief Sets each Alpha channel value of the image to the passed value in the range [0.0, 1.0].
+ * @param value `float` value in the range [0.0, 1.0] to set the overall Alpha channel of the image to
+ * @return `Result` {success, logs}
+ */
 	Result ImageProcessor::setAlpha(float val)
 	{
 		//if (val < 0.0f || val > 1.0f) return Result {.logs = {{TextCode::IP_Alpha_OOR, {}}}};
@@ -582,11 +585,14 @@ namespace PixelStudio
 		return toRGBA(res);
 	}
 
-	// -------------------------------------------------   L o c a l   i m a g e   p r o c e s s i n g   -------------------------------------------------
+	// ===================================================================================================================================================
+	// 													   L O C A L   I M A G E   P R O C E S S I N G
+	// ===================================================================================================================================================
 
 	/**
-	 * @brief Occupies the `img2D` grid (`vector<vector<float>>`) with the Y values of each `Pixel` of the selected image and its dimesion accoringly
-	 * by respecting enough space to perform a convolution with a filter by the passed dimesions.
+	 * --- NOT IN USE ---
+	 * @brief Occupies the `padImg` cells with the Y values of each pixel of the selected image and its dimesion accoringly by respecting the padding
+	 * to perform a convolution with a filter by the passed dimesions.
 	 * @param f the `Filter` to use for the comvolution
 	 * @return `Result` {success, logs}
 	 */
@@ -655,8 +661,10 @@ namespace PixelStudio
 	}
 
 	/**
-	 * @brief
-	 * @param f the `Filter` to use for the comvolution
+	 * --- NOT IN USE ---
+	 * @brief Occupies the `padImg` cells with the Y values of each pixel of the selected image and its dimesion accoringly by respecting the padding
+	 * to perform a convolution with a filter by the passed dimesions.
+	 * @param f the `Filter` to use for the convolution
 	 * @return `Result` {success, logs}
 	 */
 	Result ImageProcessor::applyGenericFilter(Filter f)
@@ -672,8 +680,6 @@ namespace PixelStudio
 
 
 		m_t_start = clock::now();
-
-		//const uint32_t size = m_images[m_IDX].Y.size();
 
 		size_t pad_H = m_H + (f.rad << 1);
 		size_t pad_W = m_W + (f.rad << 1);
@@ -695,12 +701,12 @@ namespace PixelStudio
 
 				for (int ky = -f.rad; ky <= f.rad; ++ky)										// dynamic filter loop (3x3, 5x5x, 7x7,..., nxn)
 				{
-					size_t p_y = (y + f.rad + ky) * pad_W;									// absolute y coordinate of padImg (1D vector)
+					size_t p_y = (y + f.rad + ky) * pad_W;										// absolute y coordinate of padImg (1D vector)
 
 					for (int kx = -f.rad; kx <= f.rad; ++kx)
 					{
 						size_t p_x = x + f.rad + kx;											// absolute x coordinate of padImg (1D vector)
-						size_t pImg_i = p_y + p_x;											// calculating 1D index
+						size_t pImg_i = p_y + p_x;												// calculating 1D index
 
 						conv_val += m_padImg[pImg_i] * f.kernel[k_idx++];						// accumulating the (padImg * filter) values
 					}
@@ -715,9 +721,9 @@ namespace PixelStudio
 				m_images[m_IDX].V[img_idx] = 0.0f;
 				m_images[m_IDX].A[img_idx] = 1.0f;
 			}
-		}
+	}
 
-		// -----------------------------------------------------------------------------------------------------------------------------------------------
+	// -----------------------------------------------------------------------------------------------------------------------------------------------
 
 		m_images[m_IDX].chan = 3;																// now the image is  fully opaque
 		m_ms = toMS(clock::now());
@@ -732,10 +738,10 @@ namespace PixelStudio
 	}
 
 	/**
-	 * @brief
-	 * @param sigma
-	 * @param k
-	 * @param threshold
+	 * @brief Manages all steps of the "Harris Corner Detection" process /w the industry standard filters (currently sigma is NOT used !!!)
+	 * @param sigma is manipulating the diameter and the softness of the gaussian blurr kernel. (currently NOT in use !!!)
+	 * @param k an empirical determined sensitivity parameter [0.04 - 0.06]. Lower: can detect false corners, Larger: risks missing valid corners
+	 * @param threshold the minimum threshold that must be exceeded to classify a pixel as a corner
 	 * @return `Result` {success, logs}
 	 */
 	Result ImageProcessor::applyHarrisXY(float sigma, float k, float threshold)
@@ -746,9 +752,9 @@ namespace PixelStudio
 		Filter f = SOBEL_X;
 
 		if (m_PADstamp == m_images[m_IDX].stamp && m_fRad == f.rad)
-			res.logs.push_back({TextCode::IP_Skip_Padding, {}});
-		else
-			setPadImg(res, f);
+			res.logs.push_back({TextCode::IP_Skip_Padding, {}});	// skip padding
+		else														// or
+			setPadImg(res, f);										// gen padImg metrics
 
 		const size_t size = m_images[m_IDX].Y.size();
 
@@ -762,76 +768,26 @@ namespace PixelStudio
 		m_harris.R.resize(size);
 		m_harris.keypoints.clear();
 
-		computeSobelXY(res);
+		computeSobelXY(res);										// comp. Sobel metrics
 
 		// Dispatcher depends on Megapixel size
 		if (size < MP_16_THRESHOLD)
 		{
-			computeTensorM_2x1D(res, k);
+			computeTensorM_2x1D(res, k);							// gauss5_2x1D metrics
 			m_harris.keypoints.reserve(1 << 16);
 		}
-		else
+		else														// or
 		{
-			computeTensorM_1x1D(res, k);
+			computeTensorM_1x1D(res, k);							// gauss5_2x1D metrics
 			m_harris.keypoints.reserve(1 << 18);
 		}
-		extractKeypoints(threshold);
+		extractKeypoints(res, threshold);							// extr. k_pts metrics
 
 		return res;
 	}
 
-	// -------------------------------------------------------   H e l p e r   f u n c t i o n s   -------------------------------------------------------
-
 	/**
-	 * @brief
-	 * @param sigma
-	 */
-	void ImageProcessor::defineLOG(float sigma)
-	{
-	}
-
-	/**
-	 * @brief An implementation of the "Balanced Histogram Threshold" method. Calculates and returns the threshold value [0, 1] based on the cumulative
-	 * histogram of the selected image.
-	 * @param res a container within the information pipeline to which messages can be appended at the end
-	 * @return the calculated threshold [0, 1] based on the cumulative histogram of the selected image
-	 */
-	float ImageProcessor::getBHT(Result &res)
-	{
-		// currently no Alpha0 quick exit (called internally)
-
-		computeCDF(res);
-
-		uint8_t min = 0;
-		uint8_t max = 255;
-		uint8_t cen = 0;
-
-		while ((min < 255) && (m_CDF[min] == m_CDF[min + 1]))
-			min = min + 1;
-
-		while ((max > 0) && (m_CDF[max] == m_CDF[max - 1]))
-			max = max - 1;
-
-		// res.logs.push_back({TextCode::IP_BHT, {min, max, cen}});
-		// std::cout << std::format("min = {:3}, max = {:3}, cen = {:3}\n", min, max, cen);
-
-		while (min < max)
-		{
-			cen = ((min + max) >> 1);
-
-			if ((m_CDF[cen] - m_CDF[min]) < (m_CDF[max] - m_CDF[cen]))
-				max = max - 1;
-			else
-				min = min + 1;
-		}
-
-		// res.logs.push_back({TextCode::IP_BHT, {min, max, cen, CDF[cen]}});
-		// std::cout << std::format("min = {:3}, max = {:3}, cen = {:3}, CDF[cen] = t = {}\n", min, max, cen, CDF[cen]);
-
-		return static_cast<float>(m_CDF[cen]);
-	}
-
-	/**
+	 * --- currently NOT in use !!! ---
 	 * @brief Compares the currently selected image with the image referenced by the specified index. Counts the differing pixels (in RGBA) if applicable
 	 * and outputs the information. Reports any issues, specifying the cause.
 	 * @param oIdx the index of the other image to compare the pixels
@@ -893,15 +849,68 @@ namespace PixelStudio
 		return res;
 	}
 
+	// ---------------------------------------------------------------------------------------------------------------------------------------------------
+	// 															 H E L P E R   F U N C T I O N S
+	// ---------------------------------------------------------------------------------------------------------------------------------------------------
+
 	/**
-	 * @brief Returns according to the passed threshold the Harris keypoints of the underlying image
-	 * @param threshold
-	 * @return
+	 * @brief
+	 * @param sigma
 	 */
-	std::span<const Keypoint> ImageProcessor::getKeypoints(float threshold)
+	void ImageProcessor::defineLOG(float sigma)
+	{
+	}
+
+	/**
+	 * @brief An implementation of the "Balanced Histogram Threshold" method. Calculates and returns the threshold value [0, 1] based on the cumulative
+	 * histogram of the selected image.
+	 * @param res a container within the information pipeline to which messages can be appended at the end
+	 * @return the calculated threshold [0, 1] based on the cumulative histogram of the selected image
+	 */
+	float ImageProcessor::getBHT(Result &res)
+	{
+		// currently no Alpha0 quick exit (called internally)
+
+		computeCDF(res);
+
+		uint8_t min = 0;
+		uint8_t max = 255;
+		uint8_t cen = 0;
+
+		while ((min < 255) && (m_CDF[min] == m_CDF[min + 1]))
+			min = min + 1;
+
+		while ((max > 0) && (m_CDF[max] == m_CDF[max - 1]))
+			max = max - 1;
+
+		// res.logs.push_back({TextCode::IP_BHT, {min, max, cen}});
+		// std::cout << std::format("min = {:3}, max = {:3}, cen = {:3}\n", min, max, cen);
+
+		while (min < max)
+		{
+			cen = ((min + max) >> 1);
+
+			if ((m_CDF[cen] - m_CDF[min]) < (m_CDF[max] - m_CDF[cen]))
+				max = max - 1;
+			else
+				min = min + 1;
+		}
+
+		// res.logs.push_back({TextCode::IP_BHT, {min, max, cen, CDF[cen]}});
+		// std::cout << std::format("min = {:3}, max = {:3}, cen = {:3}, CDF[cen] = t = {}\n", min, max, cen, CDF[cen]);
+
+		return static_cast<float>(m_CDF[cen]);
+	}
+
+	/**
+	 * @brief Evaluates and resturns the keypoints according to the set threshold while the threshold slider is just released.
+	 * @param threshold the threshold value at releasing the threshold slider
+	 * @return a lightweight span of `Keypoint`s {x, y, value}
+	 */
+	std::span<const Keypoint> ImageProcessor::getKeypoints(Result& res, float threshold)
 	{
 		m_harris.keypoints.clear();
-		extractKeypoints(threshold);
+		extractKeypoints(res, threshold);
 
 		return m_harris.keypoints;
 	}
@@ -912,10 +921,10 @@ namespace PixelStudio
 	// ===================================================================================================================================================
 
 	/**
-	 * @brief Converts the current `RGBA` data into the `Pixel` data structure (YUV + A). During conversion, the alpha channel values ​​are checked for
-	 * variations. Since the pixels in most m_images share the same alpha value, it makes sense to precalculate the conversion once and apply this value to
-	 * every pixel. The key aspect of this approach is the significantly more efficient reuse of `toRGBA()`, which is called after every image processing
-	 * step or image selection to display the result immediately on the screen.
+	 * @brief Converts the current `RGBA` data into the YUVA SoA data structure and the channel code is set.
+	 * @note During conversion, the Alpha channel values ​​are checked on variance. Since the pixels in most images share the same Alpha value, it makes
+	 * sense to precalculate the conversion once and apply this value to every pixel. The key aspect of this approach is the significantly more efficient
+	 * reuse of `toRGBA()`, which is called after every image processing step to display the result immediately on the screen.
 	 * @param res a container within the information pipeline to which messages can be appended at the end
 	 * @return `Result` {success, logs}
 	 */
@@ -997,9 +1006,8 @@ namespace PixelStudio
 	}
 
 	/**
-	 * @brief Reconstructs the RGBA values by the `Pixel` (YUV + A) type data of the selected image and stores these channel by channel at `RGBA`.
-	 * @note Calling `toRGBA()` completes the image processing, converts the data back to the original data structure (RGBA), and enables the call
-	 * to `stbi_write_png(..)` to save the image file.
+	 * @brief Reconstructs the RGBA values by the YUVA data of the selected image and stores the converted values in the `m_RGBA` vector, which is
+	 * used to display the image after any modification efficiently.
 	 * @param res a container within the information pipeline to which messages can be appended at the end
 	 * @return `Result` {success, logs}
 	 */
@@ -1036,8 +1044,8 @@ namespace PixelStudio
 				pRGBA[k + 1] = quantize(G);
 				pRGBA[k + 2] = quantize(B);
 				pRGBA[k + 3] = qAlpha;
-			}
 		}
+	}
 
 		else // chan == 4 (Alpha probably varies)
 		{
@@ -1056,7 +1064,7 @@ namespace PixelStudio
 				pRGBA[k + 1] = quantize(G);
 				pRGBA[k + 2] = quantize(B);
 				pRGBA[k + 3] = quantize(A[i]);
-			}
+		}
 		}
 
 		m_ms = toMS(clock::now());
@@ -1080,7 +1088,7 @@ namespace PixelStudio
 	/**
 	 * @brief Computes the "Probability Density Function" (PDF) and then the "Cumulative Distribution Function" (CDF) of the selected image its
 	 * overall luminance (Y) and the values are temporarily stored in the `CDF` array.
-	 * @note Parts of this function probably run OMP parallel
+	 * @note computing CDF always runs serial since it has just 256 elements.
 	 * @param res a container within the information pipeline to which messages can be appended at the end
 	 */
 	void ImageProcessor::computeCDF(Result &res)
@@ -1145,7 +1153,7 @@ namespace PixelStudio
 	 */
 	void ImageProcessor::setPadImg(Result &res, const Filter& f)
 	{
-		// No Alpha0 quick exit (called internally)
+		// No Alpha0 quick exit (function is called internally after such check)
 
 		m_t_start = clock::now();
 
@@ -1263,8 +1271,8 @@ namespace PixelStudio
 				m_harris.Ix[k] = std::clamp(convX + 0.5f, 0.0f, 1.0f);
 				m_harris.Iy[k] = std::clamp(convY + 0.5f, 0.0f, 1.0f);
 			}
-		}
-		// ===============================================================================================================================================
+	}
+	// ===============================================================================================================================================
 
 		m_ms = toMS(clock::now());
 
@@ -1283,7 +1291,7 @@ namespace PixelStudio
 	/**
 	 * @brief Computes the convolution of Ixx, Iyy and Ixy with Gauss 5x5 1D filter simultanously and the Harris Response R values of the results.
 	 * @param res a container within the information pipeline to which messages can be appended at the end
-	 * @param k_factor the factor between 0.04 and 0.06 which
+	 * @param k_factor an empirical determined sensitivity parameter [0.04 - 0.06]. Lower: can detect false corners, Larger: risks missing valid corners
 	 * @return
 	 */
 	Result ImageProcessor::computeTensorM_1x1D(Result & res, float k_factor)
@@ -1337,9 +1345,9 @@ namespace PixelStudio
 				int x3 = std::clamp(x + 1, 0, W - 1);
 				int x4 = std::clamp(x + 2, 0, W - 1);
 
-				// =================================================================================================
-				// 				  Lambda helper for lightning-fast per-component symmetry accumulation
-				// =================================================================================================
+				// ======================================================================================
+				// 				Lambda helper for fast per-component symmetric accumulation
+				// ======================================================================================
 				auto calcSymmetricVal = [&](const std::vector<float>& src) -> float
 				{
 					float g0 = src[r0 + x0] + src[r0 + x4] + src[r4 + x0] + src[r4 + x4];				// Group 0: 4 corners (weight W0)
@@ -1368,9 +1376,9 @@ namespace PixelStudio
 				tmpIyy[curr_i] = sumIyy;
 				tmpIxy[curr_i] = sumIxy;
 			}
-		}
+	}
 
-		// move the temporary result to the original buffers
+	// move the temporary result to the original buffers
 		m_harris.Ixx = std::move(tmpIxx);
 		m_harris.Iyy = std::move(tmpIyy);
 		m_harris.Ixy = std::move(tmpIxy);
@@ -1383,14 +1391,15 @@ namespace PixelStudio
 		res.logs.push_back({TextCode::Metrics, {"Gauss 5 1D", m_ms}});
 		#endif
 
-		return toRGBA(res);
+		//return toRGBA(res);
+		return res;
 	}
 
 	/**
 	 * @brief Computes the convolution of Ixx, Iyy and Ixy with the Gauss 5x5 1D filter in X and Y direction of the filter, in separate loops.
 	 * The Harris Response R values are also calculated of the results at the end of each loop.
 	 * @param res a container within the information pipeline to which messages can be appended at the end
-	 * @param k_factor the factor between 0.04 and 0.06 which
+	 * @param k_factor an empirical determined sensitivity parameter [0.04 - 0.06]. Lower: can detect false corners, Larger: risks missing valid corners
 	 * @return
 	 */
 	Result ImageProcessor::computeTensorM_2x1D(Result& res, float k_factor)
@@ -1440,11 +1449,11 @@ namespace PixelStudio
 				tmpIyy[curr_i] = sumIyy;
 				tmpIxy[curr_i] = sumIxy;
 			}
-		}
+	}
 
-		// =================================================================================================
-		// 				PASS 2: Vertical convolution (Y-direction, 5x1) + Calculate response R
-		// =================================================================================================
+	// =================================================================================================
+	// 				PASS 2: Vertical convolution (Y-direction, 5x1) + Calculate response R
+	// =================================================================================================
 		#ifdef PARALLEL_RUN
 		#pragma omp parallel for default(none) shared(W, m_W, H, GAUSS_1D, k_factor, tmpIxx, tmpIyy, tmpIxy)\
 		proc_bind(close) schedule(guided, m_CHUNK_SIZE)
@@ -1497,62 +1506,12 @@ namespace PixelStudio
 		res.logs.push_back({TextCode::Metrics, {"Gauss 2x1D", m_ms}});
 		#endif
 
-		return toRGBA(res);
-	}
-
-	/**
-	 * @brief Extracts the `Keypoint`s of the Harris "R" response values.
-	 * @param threshold the threshold to evaluate a valid R value as a corner
-	 * @return Result
-	 */
-	Result ImageProcessor::extractKeypoints(float threshold)
-	{
-		const int W = static_cast<int>(m_W);
-		const int H = static_cast<int>(m_H);
-
-		// Wir ignorieren die äußeren 2 Randpixel -> Null Rand-Clamping nötig!
-		// #ifdef PARALLEL_RUN
-		// // Hinweis: Für Thread-Safety sammelt jeder Thread seine eigenen Keypoints
-		// // oder wir nutzen OpenMP 5.0 reduction(+:keypoints) / lokales Vector-Merging
-		// #endif
-		for (int y = 1; y < H - 1; ++y)
-		{
-			size_t r_cen = m_W * y;
-			size_t r_up1 = m_W * (y - 1);
-			size_t r_dn1 = m_W * (y + 1);
-
-			for (int x = 1; x < W - 1; ++x)
-			{
-				size_t i = r_cen + x;
-				float val = m_harris.R[i];
-
-				// 1. EARLY EXIT: Ist der Wert überhaupt hoch genug?
-				if (val <= threshold)
-					continue;
-
-				// 2. NMS 3x3 CHECK: Ist 'val' strikt größer als alle 8 Nachbarn?
-				if (val <= m_harris.R[r_up1 + (x - 1)] ||
-					val <= m_harris.R[r_up1 + x] ||
-					val <= m_harris.R[r_up1 + (x + 1)] ||
-					val <= m_harris.R[r_cen + (x - 1)] ||
-					val <= m_harris.R[r_cen + (x + 1)] ||
-					val <= m_harris.R[r_dn1 + (x - 1)] ||
-					val <= m_harris.R[r_dn1 + x] ||
-					val <= m_harris.R[r_dn1 + (x + 1)])
-				{
-					continue; // Kein lokales Maximum!
-				}
-
-				// Wenn wir hier ankommen, haben wir eine glasklare Ecke!
-				m_harris.keypoints.push_back(Keypoint {x, y, val});
-			}
-		}
-
-		return Result {.success = true};
+		//return toRGBA(res);
+		return res;
 	}
 
 	// /**
-	//  * @brief
+	//  * @brief Single loop
 	//  * @param res
 	//  * @param k_factor
 	//  * @return
@@ -1633,6 +1592,114 @@ namespace PixelStudio
 	// 	return toRGBA(res);
 	// }
 
+	/**
+	 * @brief Extracts the `Keypoint`s of the Harris "R" response values.
+	 * @param threshold the minimum threshold that must be exceeded to classify a pixel as a corner
+	 * @return Result
+	 */
+	Result ImageProcessor::extractKeypoints(Result& res, float threshold)
+	{
+		const int W = static_cast<int>(m_W);
+		const int H = static_cast<int>(m_H);
+
+		m_t_start = clock::now();
+
+		// Hinweis: Für Thread-Safety sammelt jeder Thread seine eigenen Keypoints
+		// oder wir nutzen OpenMP 5.0 reduction(+:keypoints) / lokales Vector-Merging
+		#ifdef PARALLEL_RUN
+		#pragma omp parallel default(none) shared(W, m_W, H, threshold, m_harris) proc_bind(close)
+		{
+			// each thread gets its own local keypoints vector
+			std::vector<Keypoint> local_keypoints;
+			local_keypoints.reserve(1 << 14);
+
+			#pragma omp for schedule(guided, m_CHUNK_SIZE)
+			for (int y = 1; y < H - 1; ++y)
+			{
+				size_t r_cen = m_W * y;
+				size_t r_up1 = m_W * (y - 1);
+				size_t r_dn1 = m_W * (y + 1);
+
+				for (int x = 1; x < W - 1; ++x)
+				{
+					size_t i = r_cen + x;
+					float val = m_harris.R[i];
+
+					// early exit if val is already <= the threshold
+					if (val <= threshold)
+						continue;
+
+					// NMS 3x3 check: 'val' strictly greater than al 8 neighbours?
+					if (val <= m_harris.R[r_up1 + (x - 1)] ||
+						val <= m_harris.R[r_up1 + x] ||
+						val <= m_harris.R[r_up1 + (x + 1)] ||
+						val <= m_harris.R[r_cen + (x - 1)] ||
+						val <= m_harris.R[r_cen + (x + 1)] ||
+						val <= m_harris.R[r_dn1 + (x - 1)] ||
+						val <= m_harris.R[r_dn1 + x] ||
+						val <= m_harris.R[r_dn1 + (x + 1)])
+					{
+						continue;
+					}
+
+					// thread-safe push-back into the local vector !
+					local_keypoints.push_back(Keypoint {x, y, val});
+				}
+			}
+
+			// merging all local results into the main vector (single lock at the end)
+			#pragma omp critical
+			{
+				m_harris.keypoints.insert(m_harris.keypoints.end(), local_keypoints.begin(), local_keypoints.end());
+			}
+		}
+
+		#else // ----  SERIAL_RUN  ----
+		for (int y = 1; y < H - 1; ++y)
+		{
+			size_t r_cen = m_W * y;
+			size_t r_up1 = m_W * (y - 1);
+			size_t r_dn1 = m_W * (y + 1);
+
+			for (int x = 1; x < W - 1; ++x)
+			{
+				size_t i = r_cen + x;
+				float val = m_harris.R[i];
+
+				// early exit if val is already <= the threshold
+				if (val <= threshold)
+					continue;
+
+				// NMS 3x3 check: 'val' strictly greater than al 8 neighbours?
+				if (val <= m_harris.R[r_up1 + (x - 1)] ||
+					val <= m_harris.R[r_up1 + x] ||
+					val <= m_harris.R[r_up1 + (x + 1)] ||
+					val <= m_harris.R[r_cen + (x - 1)] ||
+					val <= m_harris.R[r_cen + (x + 1)] ||
+					val <= m_harris.R[r_dn1 + (x - 1)] ||
+					val <= m_harris.R[r_dn1 + x] ||
+					val <= m_harris.R[r_dn1 + (x + 1)])
+				{
+					continue; // not a local maximum!
+				}
+
+				// when arrived here, we have a corner!
+				m_harris.keypoints.push_back(Keypoint {x, y, val});
+			}
+		}
+		#endif
+
+		m_ms = toMS(clock::now());
+
+		#ifdef PARALLEL_RUN
+		res.logs.push_back({TextCode::Metrics_Parallel, {"ext. k_pts", m_ms}});
+		#else
+		res.logs.push_back({TextCode::Metrics, {"ext. k_pts", m_ms}});
+		#endif
+
+		res.success = true;
+		return res;
+	}
 
 	/**
 	 * @brief Returns a vector with only the RGB values taken from the `RGBA` member.

@@ -26,22 +26,6 @@ namespace PixelStudio
 	using duration = std::chrono::duration<double, std::milli>;							// alias
 	using LogArg = std::variant<int, double, std::string>;								// alias
 
-	// // ============================================== PixelStudioApp originated shared types ===============================================
-
-	// enum GPU_Vendor : uint8_t { UNKNOWN, NVIDIA, AMD, Intel };
-
-	// /**
-	//  * @brief GPU Information Struct & Detection
-	// */
-	// struct GPUInfo
-	// {
-	// 	std::string vendor	 = "Unknown";
-	// 	std::string renderer = "Unknown";
-	// 	float inUse_VRAM	 = 0.0f;
-	// 	float avail_VRAM	 = 0.0f;
-	// 	GPU_Vendor gpuVendor = GPU_Vendor::UNKNOWN;
-	// };
-
 	// ============================================== ImageProcessor originated shared types ===============================================
 
 	/**
@@ -49,6 +33,28 @@ namespace PixelStudio
 	 */
 	enum SegmType : uint8_t { FOREGROUND_KEEP_COLOR = 1, BACKGROUND_TRANSPARENT = 2 };
 
+	/**
+	 * @brief Harris Stevens Corner Detection keypoint -> coordinate & value
+	 */
+	struct Keypoint
+	{
+		int x;
+		int y;
+		float value;
+	};
+
+	/**
+	 * @brief Acts as a snapshot onto the renderable RGB or RGBA data of the `ImageProcessor`.
+	 * @note used by `PixelStudioApp` for feeding the OpenGL render taxture via GLFW
+	 */
+	struct ImageBufferView
+	{
+		std::span<const uint8_t> RGBA;
+		uint32_t stamp = 0;
+		int width = 0;
+		int height = 0;
+		int chanCode = 0;
+	};
 
 	// -------------------------------------------------------------------------------------------------------------------------------------
 	// 																Filter Kernels
@@ -95,7 +101,7 @@ namespace PixelStudio
 	struct Filter
 	{
 		std::span<const float> kernel;					// the filter kernel (provides the static/dynamic data)
-		uint8_t rad;                 					// the radial of the center to the width and height of the filter
+		uint8_t rad;                 					// the radius of the filter to its horizontal/vertical edges
 	};
 
 	// predefined standard filters
@@ -104,26 +110,6 @@ namespace PixelStudio
 	constexpr static Filter GAUSS_5	 = {gauss5, 2};		// Harris Gaussian (Ixx, Iyy, Ixy)
 	constexpr static Filter GAUSS_1D = {gauss5_1D, 2};	// Harris Gaussian (Ixx, Iyy, Ixy)
 	constexpr static Filter NEG_LOG	 = {negLog, 2};		// negative LoG (Marr-Hildreth detector, "Mexican hat")
-
-	struct Keypoint
-	{
-		int x;
-		int y;
-		float value;
-	};
-
-	/**
-	 * @brief Acts as a snapshot onto the renderable RGB or RGBA data of the `ImageProcessor`.
-	 * @note used by `PixelStudioApp` for feeding the OpenGL render taxture via GLFW
-	 */
-	struct ImageBufferView
-	{
-		std::span<const uint8_t> RGBA;
-		uint32_t stamp = 0;
-		int width = 0;
-		int height = 0;
-		int chanCode = 0;
-	};
 
 
 	// ========================================================== TextCode System ==========================================================
@@ -251,7 +237,7 @@ namespace PixelStudio
 		"contrast manip. skipped!\n(value must be within [-1, 5])\n",				//  29
 		"posterization skipped!\n(range must be 1 <= exp <= 7)\n",					//  30
 		"num of \u0394 pixels: {:9}\n",												//  31
-		"skipped the image padding!\n(image & filter width -> unchanged!)\n",		//  32
+		"padding skipped! (image -> unchanged!)\n",									//  32
 		"compare images skipped!\n(referred image has a different size)\n",			//  33
 		"compare images skipped!\n(referred image is not available)\n",				//  34
 		"skipped the operation!\n(the image is fully transparent)\n",				//  35
@@ -273,21 +259,21 @@ namespace PixelStudio
 
 	/**
 	 * @brief Helper to get the identified text comfortable
-	 * @param code `TextCode` enum unit8_t 0 to 43
+	 * @param code `TextCode` enum unit8_t 0 to 45
 	 * @return the identified text as a `std::string_view`.
 	 */
-	constexpr std::string_view getText(TextCode code) { return STATUS_TEXTS[static_cast<size_t>(code)]; }
+	constexpr std::string_view getText(TextCode code) { return STATUS_TEXTS[static_cast<uint8_t>(code)]; }
 
 	/**
 	 * @brief Helper to get the identified text comfortable and directly as string
-	 * @param code `TextCode` enum unit8_t 0 to 43
+	 * @param code `TextCode` enum unit8_t 0 to 45
 	 * @return the identified text as a `std::string`.
 	 */
 	constexpr std::string getAsString(TextCode code) { return static_cast<std::string>(getText(code)); }
 
 	/**
 	 * @brief Helper to format the passed args accordingly to the identified text by the `TextCode` enum.
-	 * @param code `TextCode` enum unit8_t 0 to 43
+	 * @param code `TextCode` enum unit8_t 0 to 45
 	 * @param args alias `LogArg` -> a variant of int, double or string
 	 * @return the proper formatted text resulting by the `TextCode` and the parameters
 	 */

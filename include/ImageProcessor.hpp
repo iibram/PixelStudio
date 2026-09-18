@@ -30,7 +30,7 @@ namespace PixelStudio
 
 		/**
 		 * @brief Beyond this crossover point, RAM bandwidth dominates over L3 cache size.
-		 * @note 16 MiP (2^24 = 16,777,216 Pixel / ~4096 x 4096)
+		 * @note 16 MP (2^24 = 16,777,216 Pixel / ~4096 x 4096)
 		 */
 		constexpr static size_t MP_16_THRESHOLD = 1ULL << 24;
 
@@ -61,7 +61,7 @@ namespace PixelStudio
 
 
 		/**
-		 * @brief Represents an image and its essential data in an SoA manner to radically speed up the YUVA dependent processes by AVX2/AVX-512.
+		 * @brief Represents an image and its essential data in a SoA manner to radically speed up the YUVA dependent processes by AVX2/AVX-512.
 		 * @note The different `chan` values are used during the image processing as indicators of the state the alpha channel values.
 		 * At saving the image (and selection of the user) the correct (3 or 4) value is passed to the "stb" library.
 		 */
@@ -78,7 +78,7 @@ namespace PixelStudio
 		};
 
 		/**
-		 * @brief
+		 * @brief Data of the latest Harris Corner Detection
 		 */
 		struct Harris_Data
 		{
@@ -88,8 +88,8 @@ namespace PixelStudio
 			std::vector<float> Iyy;							// Iyy * Gauss
 			std::vector<float> Ixy;							// Ixy * Gauss
 			std::vector<float> R;							// Response value
-			std::vector<Keypoint> keypoints;
-			uint32_t stamp = 0;
+			std::vector<Keypoint> keypoints;				// detected corners keypoints {x, y, value}
+			uint32_t stamp = 0;								// unique identifying "stamp" of the latest Harris Detection
 		};
 
 
@@ -115,20 +115,20 @@ namespace PixelStudio
 		uint8_t  m_fRad		   = 0xFF;						// the "radial" offset from the center to the vertical and horizontal borders of the filter
 
 
-		Result toYUVA(Result& res);									// RGBA -> YUVA
-		Result toRGBA(Result& res);									// YUVA -> RGBA
-		//Result toRGB(Result& res);								//    Y -> RGB
-		void computeCDF(Result& res);								// CDF = Cumulative Distribution Function (W * H -> 256)
+		Result toYUVA(Result& res);										// RGBA -> YUVA
+		Result toRGBA(Result& res);										// YUVA -> RGBA
+		//Result toRGB(Result& res);									//    Y -> RGB
+		void computeCDF(Result& res);									// CDF = Cumulative Distribution Function (W * H -> 256)
 		void setPadImg(Result& res, const Filter& filter);
 		Result computeSobelXY(Result& res);
 		Result computeTensorM_1x1D(Result& res, float k_factor);
 		Result computeTensorM_2x1D(Result& res, float k_factor);
-		Result extractKeypoints(float threshold);
+		Result extractKeypoints(Result& res, float threshold);
 
 		std::vector<uint8_t> create_RGB();
 
 		/**
-		 * @brief Increments and returns the next unique stamp.
+		 * @brief Increments and returns the next unique "stamp".
 		 * @return the next uinique `uint32_t` stamp
 		 */
 		uint32_t nextStamp() { return ++s_stamp; }
@@ -140,9 +140,9 @@ namespace PixelStudio
 		 */
 		[[nodiscard]] constexpr uint8_t quantize(float f) noexcept
 		{
-			f = std::clamp(f, 0.0f, 1.0f);        					// clamping the range [0.0, 1.0]
-			f = f * 255.0f + 0.5f;                					// scaling up to [0, 255] and round commercially (step 1)
-			return static_cast<uint8_t>(f);       					// this cast finalizes the commercialy rounding (step 2)
+			f = std::clamp(f, 0.0f, 1.0f);        						// clamping the range [0.0, 1.0]
+			f = f * 255.0f + 0.5f;                						// scaling up to [0, 255] and round commercially (step 1)
+			return static_cast<uint8_t>(f);       						// this cast finalizes the commercialy rounding (step 2)
 		}
 
 		/**
@@ -181,12 +181,15 @@ namespace PixelStudio
 		Result applyStandardFilter(Filter f);
 		Result applyGenericFilter(Filter f);
 		Result applyHarrisXY(float sigma, float k, float threshold);
+		Result compareRGBA(int oIdx);
 
 		void defineLOG(float sigma);
 		float getBHT(Result &res);
-		Result compareRGBA(int oIdx);
 
-
+		/**
+		 * @brief Returns the unique "stamp" identifier of the latest Harris Corner Detection data.
+		 * @return an `uint32_t` unique identifier
+		 */
 		uint32_t getHarrisStamp() { return m_harris.stamp; }
 
 		/**
@@ -197,24 +200,46 @@ namespace PixelStudio
 
 		/**
 		 * @brief Returns the current `Harris_Stevens_Data` its `Ix` (horizontal convolution) luminance values at an interval of [0.0, 1.0] for displaying
-		 * @return `std::span<const float>`
+		 * @return `std::span<const float>` for a lightwieght quick access
 		 */
 		[[nodiscard]] std::span<const float> get_Ix() const noexcept { return m_harris.Ix; }
 
 		/**
 		 * @brief Returns the current `Harris_Stevens_Data` its `Iy` (vertical convolution) luminance values at an interval of [0.0, 1.0] for displaying
-		 * @return `std::span<const float>`
+		 * @return `std::span<const float>` for a lightwieght quick access
 		 */
 		[[nodiscard]] std::span<const float> get_Iy() const noexcept { return m_harris.Iy; }
 
+		/**
+		 * @brief Returns the current `Harris_Stevens_Data` its `Ixx` (Ix.Ix) luminance values at an interval of [0.0, 1.0] for displaying
+		 * @return `std::span<const float>` for a lightwieght quick access
+		 */
 		[[nodiscard]] std::span<const float> get_Ixx() const noexcept { return m_harris.Ixx; }
+
+		/**
+		 * @brief Returns the current `Harris_Stevens_Data` its `Iyy` (Iy.Iy) luminance values at an interval of [0.0, 1.0] for displaying
+		 * @return `std::span<const float>` for a lightwieght quick access
+		 */
 		[[nodiscard]] std::span<const float> get_Iyy() const noexcept { return m_harris.Iyy; }
+
+		/**
+		 * @brief Returns the current `Harris_Stevens_Data` its `Ixy` (Ix.Iy) luminance values at an interval of [0.0, 1.0] for displaying
+		 * @return `std::span<const float>` for a lightwieght quick access
+		 */
 		[[nodiscard]] std::span<const float> get_Ixy() const noexcept { return m_harris.Ixy; }
 
-		// Standard-Keypoints nach applyHarris (mit aktuellem/default Threshold)
+		/**
+		 * @brief Resturns the keypoints according to the set threshold while the "Harris Corner Detection" was clicked.
+		 * @return a lightweight span of `Keypoint`s {x, y, value}
+		 */
 		[[nodiscard]] std::span<const Keypoint> getKeypoints() const noexcept { return m_harris.keypoints; }
-		// Dynamische Filterung bei Slider-Change
-		[[nodiscard]] std::span<const Keypoint> getKeypoints(float threshold);
+
+		/**
+		 * @brief Evaluates and resturns the keypoints according to the set threshold while the threshold slider is just released.
+		 * @param threshold the threshold value at releasing the threshold slider
+		 * @return a lightweight span of `Keypoint`s {x, y, value}
+		 */
+		[[nodiscard]] std::span<const Keypoint> getKeypoints(Result& res, float threshold);
 
 	};
 }
