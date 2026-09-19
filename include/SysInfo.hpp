@@ -35,13 +35,13 @@
 namespace PixelStudio
 {
 	/**
-	 * @brief A tiny cross-platform systems traverser for detecting the OpenMP status, the physical core number and the underlaying visual style
-	 * of the running system (Windows/Linux). Also invokes the systems native file choser for loading / saving files interactivly.
+	 * @brief A tiny cross-platform systems traverser for detecting the OpenMP status, the physical core number and the underlaying visual style of the running system
+	 * (Windows/Linux). Also invokes the systems native file choser for loading / saving files interactivly.
 	 * @note Defines the detected stats for the compiler, for compiling just the neccessary lines matching the running systems.
 	 */
 	namespace SysInfo
 	{
-		// ======================================================= Default OUT Path Check =========================================================
+		// =============================================================== Default OUT Path Check ====================================================================
 
 		/**
 		 * @brief Checks and sets the default output directory (for images), if not already exists.
@@ -53,7 +53,7 @@ namespace PixelStudio
 				res.logs.push_back({TextCode::SYS_Save_Path, {}});
 		}
 
-		// ========================================================== OpenMP Diagnosis ============================================================
+		// ================================================================== OpenMP Diagnosis =======================================================================
 
 		/**
 		 * @brief Checks the running systems OpenMP status and appends these informations to the given container.
@@ -124,12 +124,12 @@ namespace PixelStudio
 			// ========================================== Linux ==========================================
 			#elif defined(__linux__)
 			// Reads the number of physical cores from sysfs
-			std::ifstream cpuinfo("/sys/devices/system/cpu/cpu0/topology/core_cpus_list"); // is the target data available
+			std::ifstream cpuinfo("/sys/devices/system/cpu/cpu0/topology/core_cpus_list"); 							// is the target data available
 			if (cpuinfo.good())
 			{
-				std::ifstream smt("/sys/devices/system/cpu/smt/active"); // read if SMT is active or not
+				std::ifstream smt("/sys/devices/system/cpu/smt/active"); 											// read if SMT is active or not
 				char active;
-				if (smt >> active && active == '1') // writing smt >> active, and check if it is '1'
+				if (smt >> active && active == '1') 																// writing smt >> active, and check if it is '1'
 					return (logical_cores >> 1);
 			}
 			#endif
@@ -145,10 +145,10 @@ namespace PixelStudio
 		 */
 		inline uint16_t getChunkSize(uint8_t struct_size_in_bytes)
 		{
-			uint16_t cache_line_size = 64; // setting the standard cache line size of 64 bytes
+			uint16_t cache_line_size = 64; 																			// setting the standard cache line size of 64 bytes
 
 			#ifdef __cpp_lib_hardware_interference_size
-			cache_line_size = std::hardware_destructive_interference_size; // setting the actual cache line size (if defined in compiling system)
+			cache_line_size = std::hardware_destructive_interference_size; 											// setting the actual cache line size (if def. in compiling system)
 			#endif
 
 			uint16_t elements_per_cache_line = cache_line_size / struct_size_in_bytes;
@@ -158,7 +158,7 @@ namespace PixelStudio
 			return (elements_per_cache_line << 6);
 		}
 
-		// ========================================================= Native File Dialog ===========================================================
+		// ================================================================== Native File Dialog =====================================================================
 
 		/**
 		 * @brief Invokes the native open file dialog of the specific OS and applies various file filters.
@@ -175,7 +175,7 @@ namespace PixelStudio
 			ZeroMemory(&ofn, sizeof(ofn));
 
 			ofn.lStructSize = sizeof(ofn);
-			ofn.hwndOwner = GetActiveWindow(); // linking with the app window
+			ofn.hwndOwner = GetActiveWindow(); 																		// linking with the app window
 			ofn.lpstrFile = szFile;
 			ofn.nMaxFile = sizeof(szFile);
 			ofn.nFilterIndex = 1;
@@ -187,7 +187,7 @@ namespace PixelStudio
 			if (GetOpenFileNameA(&ofn) == TRUE)
 				return ofn.lpstrFile;
 
-			return ""; // abborted by the user
+			return ""; 																								// abborted by the user
 
 			// ========================================== Linux ==========================================
 			#elif defined(__linux__)
@@ -204,7 +204,7 @@ namespace PixelStudio
 			{
 				result = buffer;
 
-				if (!result.empty() && result.back() == '\n') // removes the line break (\n) at the end of the path
+				if (!result.empty() && result.back() == '\n') 															// removes the line break (\n) at the end of the path
 					result.pop_back();
 			}
 			pclose(pipe);
@@ -232,7 +232,7 @@ namespace PixelStudio
 			ZeroMemory(&ofn, sizeof(ofn));
 
 			ofn.lStructSize = sizeof(ofn);
-			ofn.hwndOwner = GetActiveWindow(); 								// linking with the app window
+			ofn.hwndOwner = GetActiveWindow(); 																			// linking with the app window
 			ofn.lpstrFile = szFile;
 			ofn.nMaxFile = sizeof(szFile);
 			ofn.lpstrInitialDir = saveDir.empty() ? NULL : saveDir.c_str();
@@ -251,22 +251,21 @@ namespace PixelStudio
 			// extract the dynamic default extension based on the filename extension
 			fs::path fnPath(filename);
 			std::string ext = fnPath.extension().string();
-			if (!ext.empty() && ext.front() == '.') ext.erase(0, 1); 		// remove '.' => "png"
+			if (!ext.empty() && ext.front() == '.') ext.erase(0, 1); 													// remove '.' => "png"
 
 			ofn.lpstrDefExt = ext.empty() ? "png" : ext.c_str();
 
 			if (GetSaveFileNameA(&ofn) == TRUE)
 				return ofn.lpstrFile;
 
-			return "";														// abborted by the user
+			return "";																									// abborted by the user
 
 			// ========================================== Linux ==========================================
 			#elif defined(__linux__)
 
 			fs::path fullInitialPath = fs::path(saveDir) / filename;
 
-			// construct the command string for Zenity
-			// --filename sets the starting folder & the filename
+			// construct the command string for Zenity (--filename sets the starting folder & the filename)
 			std::string cmd = "zenity --file-selection --save --confirm-overwrite "
 				"--title=\"Save Image As...\" "
 				"--filename=\"" + fullInitialPath.string() + "\" "
@@ -284,8 +283,8 @@ namespace PixelStudio
 			if (fgets(buffer, sizeof(buffer), pipe) != NULL)
 			{
 				result = buffer;
-				// remove the line break (\n) at the end of the path
-				if (!result.empty() && result.back() == '\n')
+
+				if (!result.empty() && result.back() == '\n')															// remove the line break (\n) at the end of the path
 					result.pop_back();
 			}
 			pclose(pipe);
@@ -297,7 +296,7 @@ namespace PixelStudio
 			#endif
 		}
 
-		// =========================================================== OS Visual Style ============================================================
+		// =================================================================== OS Visual Style =======================================================================
 
 		/**
 		 * @brief Detects and returns the visual style of the specific OS.
@@ -305,7 +304,7 @@ namespace PixelStudio
 		 */
 		inline void checkVisualMode(Result &res)
 		{
-			res.success = true;	// Assumtion: Dark Mode is active
+			res.success = true;																							// Assumtion: Dark Mode is active
 
 			// ========================================= Windows =========================================
 			#if defined(_WIN32)
@@ -326,7 +325,7 @@ namespace PixelStudio
 
 			if (result == ERROR_SUCCESS)
 			{
-				if (data == 0) // when AppsUseLightTheme 0 -> Dark Mode is active!
+				if (data == 0)																							// when AppsUseLightTheme 0 -> Dark Mode is active!
 					res.logs.push_back({TextCode::SYS_OS_Visual_Mode, {"Windows in Dark Mode"}});
 				else
 				{
@@ -336,7 +335,7 @@ namespace PixelStudio
 
 			}
 			else
-				res.logs.push_back({TextCode::SYS_OS_Unknown_Dark_Mode, {}}); // fallback to Dark Mode
+				res.logs.push_back({TextCode::SYS_OS_Unknown_Dark_Mode, {}});											// fallback to Dark Mode
 
 			// ========================================== Linux ==========================================
 			#elif defined(__linux__)
@@ -359,8 +358,8 @@ namespace PixelStudio
 				pclose(pipe);
 
 				// XDG Portal Standard: 1 = Prefer Dark, 2 = Prefer Light, 0 = No Preference
-				if (result.find("uint32 1") != std::string::npos) return true;	// Dark Mode aktiv!
-				if (result.find("uint32 2") != std::string::npos) return false;	// Light Mode aktiv!
+				if (result.find("uint32 1") != std::string::npos) return true;											// Dark Mode active!
+				if (result.find("uint32 2") != std::string::npos) return false;											// Light Mode active!
 			}
 
 			// fallback for GNOME / XFCE via gsettings
@@ -380,11 +379,11 @@ namespace PixelStudio
 				}
 			}
 			else
-				res.logs.push_back({TextCode::SYS_OS_Unknown_Dark_Mode, {}}); // fallback to Dark Mode
+				res.logs.push_back({TextCode::SYS_OS_Unknown_Dark_Mode, {}});											// fallback to Dark Mode
 
 			// ===================================== Unknown System ======================================
 			#else
-			res.logs.push_back({TextCode::SYS_OS_Unknown_Dark_Mode, {}}); // fallback to Dark Mode
+			res.logs.push_back({TextCode::SYS_OS_Unknown_Dark_Mode, {}});												// fallback to Dark Mode
 			#endif
 		}
 	}

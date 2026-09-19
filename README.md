@@ -25,34 +25,38 @@
 
 ### 🎯 1. O(1) Stamp-Based Validation & Invalidation System
 To prevent redundant computation across multi-stage image processing pipelines, PixelStudio incorporates an $O(1)$ **Stamp Verification Engine**:
-* Answers pipeline questions instantly: *Does the active RGBA display vector match the loaded image? Is the cached padding aligned with the current inspection view? Has Harris Detection executed on this exact dataset version?*
+* Answers pipeline questions instantly: *Does the active RGBA display vector match the selected image? Is the cached `padImg` based on the current image? Has Harris Detection executed on this exact dataset version?*
 * Eliminates buffer thrashing and invalidates downstream passes **only when parent parameters change**.
 
 ### 🧬 2. SIMD-Friendly YUVA Structure-of-Arrays (SoA)
 Instead of processing redundant RGB channels across spatial convolution filters, Pixel Studio converts image data into a decoupled **YUVA planar format**:
-* **Luminance-Centric Processing:** Spatial operations (Sobel, Gaussian, Harris) operate exclusively on the $Y$ (Luminance) channel. Color fidelity ($U/V$) and transparency ($A$) remain strictly preserved with zero color degradation.
+* **Luminance-Centric Processing:** Very much all image manipulations and spatial operations (Sobel, Gaussian) operate exclusively on the $Y$ (Luminance) channel. Color fidelity ($U/V$) and transparency ($A$) remain strictly preserved with zero color degradation.
 * **Cache Efficiency:** 1-channel linear traversals maximize L1/L2 cache hit rates compared to interleaved (AoS) formats.
-* **Single Active RGBA Buffer:** Only **one** global RGBA vector is materialized in RAM for display rendering, alongside the active tab's YUVA structures.
+* **Single Active RGBA Buffer:** Only **one** global RGBA vector is materialized in RAM for display rendering, alongside the current image YUVA structures.
 
 ### 🧵 3. Thread Parallelism via OpenMP
-* High-intensity spatial convolutions (Sobel derivatives, separable 1D Gaussian blurs, Non-Maximum Suppression) are accelerated using **OpenMP loop parallelization**.
-* To prevent UI thread lockups and complex race conditions within the Immediate Mode GUI, thread parallelism is strictly constrained to the processing kernels—keeping the UI event loop completely deterministic and serial.
+* High-intensity spatial convolutions (Sobel derivatives, separable 1D Gaussian blurs, Non-Maximum Suppression) and any heavy lifting image manipulation algorithms are accelerated using **OpenMP loop parallelization**.
+* To prevent UI thread lockups and complex race conditions within the Immediate Mode GUI, thread parallelism is strictly constrained to the processing algorithms - keeping the UI event loop completely deterministic and serial.
 
 ### 🖥️ 4. Hardware-Aware System Inspection (`SysInfo`)
 Pixel Studio queries hardware topologies dynamically at initialization:
-* **Physical Core Affinity:** Filters out HyperThreading / SMT virtual logical threads to determine true physical core counts, automatically calculating **optimal OpenMP chunk sizes** per image payload.
+* **Physical Core Affinity:** Filters out virtual logical threads (Hyper-Threading / SMT) to determine the actual number of physical cores and automatically calculates the **optimal OpenMP chunk size** for the running system.
 * **Native OS Integration:** Leverages OS-native FileChoosers (with pre-configured extension filters) and automatically syncs the UI theme (Light/Dark Mode) with system preferences upon startup.
 * **Cross-Platform Resilience:** Uses conditionally compiled platform shims (`#defines`) to ensure clean compilation across Windows and Linux (CachyOS/GCC/Clang).
 
 ### 📐 5. Scalable Immediate Mode UI (`UIComponents`)
-* Custom-crafted UI elements: `CustomMenuItem`, `CustomTabButton`, `ThemeToggleButton`, and `ToggleButton`.
-* **DPI-Aware Scaling Engine:** Dynamically queries screen DPI at application launch to establish an absolute base scaling factor (`UI::em`). All UI dimensions, padding, and font hierarchies are pre-scaled once at startup—eliminating runtime layout recalculation during ImGui frames.
+* **Custom-crafted UI elements:** `CustomMenuItem`, `CustomTabButton`, `ThemeToggleButton`, and `ToggleButton`.
+* **DPI-Aware Scaling Engine:** Dynamically queries screen DPI at application launch to establish an absolute base scaling factor (`UI::em`). All UI dimensions, padding, and font hierarchies are pre-scaled once at startup - eliminating runtime layout recalculation during ImGui frames.
 
 ### 📊 6. Deterministic VRAM Tracking & Telemetry
-* **Zero-Overhead Memory Footprint:** Monitors GPU VRAM consumption via native OpenGL driver queries (NVIDIA/AMD path selection) alongside an in-memory byte counter.
+* **Deterministic Local Accounting:** Initialized via native OpenGL driver queries at startup, followed by immediate, zero-latency byte-level tracking ($+ \text{Alloc} / - \text{Dealloc}$) on every GPU texture mutation and window/viewport resize event - bypassing blocking GPU driver polling during event-driven GUI loops (`glfwWaitEvents`).
 * **Smart Texture Lifecycle:** VRAM textures for intermediate gradient inspection ($I_x, I_y, I_{xx}, I_{yy}, I_{xy}$) are loaded lazily on-demand and freed during algorithm rebuilds or tab closures.
-* **Live Status Indicator:** Real-time color-coded feedback (`GOOD` < 60%, `WARN` 60–85%, `ALERT` > 85%) warns users of system VRAM pressure.
 * **Live Status Indicator:** Real-time color-coded feedback (🟢 `GOOD` < 60%, 🟡 `WARN` 60–85%, 🔴 `ALERT` > 85%) warns users of system VRAM pressure.
+
+### 🛡️ 7. Exception-Free Diagnostics & Telemetry Frame
+* **Safety-Critical Design Pattern:** Built strictly around deterministic error propagation (`-fno-exceptions` compatible) to eliminate non-deterministic stack-unwinding overhead and guarantee complete control over failure states within critical processing loops.
+* **Non-Blocking Telemetry & Status Pipeline:** Implements a lightweight status-code, log, and metrics tracking system that channels internal warnings, file I/O states, and algorithm metrics directly into non-interfering UI toasts and status monitors.
+* **Guaranteed Control Flow:** Pipeline and asset failures (e.g., via C-style `stb` error status checks) are gracefully captured through explicit result propagation, ensuring zero thread stagnation and 100% deterministic execution under all conditions.
 
 ---
 

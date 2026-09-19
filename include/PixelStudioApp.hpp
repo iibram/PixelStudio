@@ -42,7 +42,8 @@ namespace PixelStudio
 {
 	/**
 	 * @brief Provides an immediate GUI environment for this app and uses an `ImageProcessor` instance to process the heavy weight image processing.
-	 * @note Uses externally the "Dear ImGui" library by [Omar Cornut](https://github.com/ocornut/imgui) for realizing a immediate GUI environment.
+	 * @note Uses externally the "Dear ImGui" library by [Omar Cornut](https://github.com/ocornut/imgui) for realizing an immediate GUI environment.
+	 * @note Uses also externally the "stb" library by [Sean Barrett](https://github.com/nothings/stb) just for loading the icons for this app.
 	 */
 	class PixelStudioApp
 	{
@@ -54,14 +55,13 @@ namespace PixelStudio
 
 
 	private:
-		inline static constexpr float INV_10K	  = 1.0f / 1000.0f;
-		inline static constexpr float INV_1024	  = 1.0f / 1024.0f;						// Base constants for memory conversions
-		inline static constexpr float BYTES_TO_KB = INV_1024;							// 1D: Bytes -> Kilobytes (e.g., for buffers or line lengths)
-		inline static constexpr float BYTES_TO_MB = INV_1024 * INV_1024;					// 2D: Bytes -> Megabytes (e.g., for 2D textures & FBOs)
+		inline static constexpr float INV_1024	  = 1.0f / 1024.0f;									// Base constants for memory conversions
+		inline static constexpr float BYTES_TO_KB = INV_1024;										// 1D: Bytes -> Kilobytes (e.g., for buffers or line lengths)
+		inline static constexpr float BYTES_TO_MB = INV_1024 * INV_1024;							// 2D: Bytes -> Megabytes (e.g., for 2D textures & FBOs)
 
-		inline static uint32_t g_tabID = 0;													// global tabID counter
+		inline static uint32_t g_tabID = 0;															// global tabID counter
 
-		inline static ImVec2 s_winDIM = ImVec2(0.0f, 0.0f);									// current dimension of the app windows
+		inline static ImVec2 s_winDIM = ImVec2(0.0f, 0.0f);											// current dimension of the app windows
 
 		/**
 		 * @brief GPU vendor identier
@@ -136,18 +136,18 @@ namespace PixelStudio
 			explicit InspectionData(PixelStudioApp& parent) : app(parent) {}
 			PixelStudioApp& app;
 
-			std::vector<Keypoint> keypoints;						// Harris Keypoints
+			std::vector<Keypoint> keypoints;								// Harris Keypoints
 
-			GLuint tex_Ix = 0;										// texture ID for  Ix data (convolution result: image * Sobel in X direction)
-			GLuint tex_Iy = 0;										// texture ID for  Iy data (convolution result: image * Sobel in X direction)
-			GLuint texIxx = 0;										// texture ID for Ixx data (dot product: Ix.Ix)
-			GLuint texIyy = 0;										// texture ID for Iyy data (dot product: Iy.Iy)
-			GLuint texIxy = 0;										// texture ID for Ixy data (dot product: Ix.Iy)
+			GLuint tex_Ix = 0;												// texture ID for  Ix data (convolution result: image * Sobel in X direction)
+			GLuint tex_Iy = 0;												// texture ID for  Iy data (convolution result: image * Sobel in X direction)
+			GLuint texIxx = 0;												// texture ID for Ixx data (dot product: Ix.Ix)
+			GLuint texIyy = 0;												// texture ID for Iyy data (dot product: Iy.Iy)
+			GLuint texIxy = 0;												// texture ID for Ixy data (dot product: Ix.Iy)
 
-			int width  = 0;											// width of the inspected image
-			int height = 0;											// height of the inspected image
+			int width  = 0;													// width of the inspected image
+			int height = 0;													// height of the inspected image
 
-			uint32_t stamp  = 0;									// stamp of the latest "Detection Method"
+			uint32_t stamp  = 0;											// stamp of the latest "Detection Method"
 
 			void setupHarris(int w, int h);
 			void setupSIFT(int w, int h);
@@ -171,34 +171,34 @@ namespace PixelStudio
 		};
 
 
-		ImageProcessor m_processor;									// the heavy lifting image processing instance
-		InspectionData m_inspectionData;							// all the inspection data (Harris, SIFT, SURF)
-		GPUInfo m_GPU;												//
+		ImageProcessor m_processor;											// the heavy lifting image processing instance
+		InspectionData m_inspectionData;									// all the inspection data (Harris, SIFT, SURF)
+		GPUInfo m_GPU;														//
 
-		std::vector<ImageTab> m_tabs;								// all images currently available in this session (consistent indices /w ImageProcessor)
-		std::string m_currPopupText;								// current shown popup text
-		std::string m_currLog;										// current shown text of the Performance Log
+		std::vector<ImageTab> m_tabs;										// all images currently available in this session (consistent indices /w ImageProcessor)
+		std::string m_currPopupText;										// current shown popup text
+		std::string m_currLog;												// current shown text of the Performance Log
 
-		GLFWwindow* m_window = nullptr;								// pointer to the main window
+		GLFWwindow* m_window = nullptr;										// pointer to the main window
 
-		ImVec2 m_mainContentPos;									// cursor position (top-left) of the full image area (main content)
-		ImVec2 m_mainContentSize;									// size of the full main content area
-		ImVec2 m_renderPos;											// cursor position (top-left) of the image rendering area
-		ImVec2 m_renderSize;										// size of the image rendering area
+		ImVec2 m_mainContentPos;											// cursor position (top-left) of the full image area (main content)
+		ImVec2 m_mainContentSize;											// size of the full main content area
+		ImVec2 m_renderPos;													// cursor position (top-left) of the image rendering area
+		ImVec2 m_renderSize;												// size of the image rendering area
 
-		GLuint m_activeTexID = 0;									// the ID of the currently active texture (OpenGL, GPU, VRAM)
+		GLuint m_activeTexID = 0;											// the ID of the currently active texture (OpenGL, GPU, VRAM)
 
-		int m_IDX = -1;												// index of the current TAB
+		int m_IDX = -1;														// index of the current TAB
 
-		bool m_firstFrame	= true;									// is the first frame of ImGui shown? (stutter elimination at start)
-		bool m_popupToShow	= false;								// is there any pending popup ?
-		bool m_themeChanged = false;								// is there a pending theme change request?
-		bool m_isLogOpen	= false;								// is Performance Log open?
+		bool m_firstFrame	= true;											// is the first frame of ImGui shown? (stutter elimination at start)
+		bool m_popupToShow	= false;										// is there any pending popup ?
+		bool m_themeChanged = false;										// is there a pending theme change request?
+		bool m_isLogOpen	= false;										// is Performance Log open?
 
-		UI::ThemeMode m_currTheme = UI::ThemeMode::DARK;			// current selected theme mode
-		UI::ThemeMode m_nextTheme = UI::ThemeMode::DARK;			// next theme mode to switch to
-		TextCode m_header = TextCode::None;							// pending popup header
-		TextCode m_footer = TextCode::None;							// pending popup footer
+		UI::ThemeMode m_currTheme = UI::ThemeMode::DARK;					// current selected theme mode
+		UI::ThemeMode m_nextTheme = UI::ThemeMode::DARK;					// next theme mode to switch to
+		TextCode m_header = TextCode::None;									// pending popup header
+		TextCode m_footer = TextCode::None;									// pending popup footer
 
 
 		void init(Result & res);

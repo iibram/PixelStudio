@@ -18,15 +18,16 @@
  */
 namespace PixelStudio
 {
-	namespace fs = std::filesystem;														// alias
+	namespace fs = std::filesystem;																				// alias
 
-	static fs::path DEFAULT_LOAD_PATH = fs::current_path() / "default_DIR" / "IN";		// the default path to load images
-	static fs::path DEFAULT_SAVE_PATH = fs::current_path() / "default_DIR" / "OUT";		// the defualt path to save images
+	static fs::path DEFAULT_LOAD_PATH = fs::current_path() / "default_DIR" / "IN";								// the default path to load images
+	static fs::path DEFAULT_SAVE_PATH = fs::current_path() / "default_DIR" / "OUT";								// the defualt path to save images
 
-	using duration = std::chrono::duration<double, std::milli>;							// alias
-	using LogArg = std::variant<int, double, std::string>;								// alias
+	using duration = std::chrono::duration<double, std::milli>;													// alias
+	using LogArg = std::variant<int, double, std::string>;														// alias
 
-	// ============================================== ImageProcessor originated shared types ===============================================
+
+	// ======================================================== ImageProcessor originated shared types ===========================================================
 
 	/**
 	 * @brief Options during segmentations to modify the appearance of the back- and foreground
@@ -56,9 +57,9 @@ namespace PixelStudio
 		int chanCode = 0;
 	};
 
-	// -------------------------------------------------------------------------------------------------------------------------------------
-	// 																Filter Kernels
-	// -------------------------------------------------------------------------------------------------------------------------------------
+	// -----------------------------------------------------------------------------------------------------------------------------------------------------------
+	// 																	F i l t e r   K e r n e l s
+	// -----------------------------------------------------------------------------------------------------------------------------------------------------------
 	constexpr static float sobelX[9] =
 	{
 		-1.0f, 0.0f, 1.0f,
@@ -100,78 +101,84 @@ namespace PixelStudio
 	 */
 	struct Filter
 	{
-		std::span<const float> kernel;					// the filter kernel (provides the static/dynamic data)
-		uint8_t rad;                 					// the radius of the filter to its horizontal/vertical edges
+		std::span<const float> kernel;											// the filter kernel (provides the static/dynamic data)
+		uint8_t rad;                 											// the radius of the filter to its horizontal/vertical edges
 	};
 
 	// predefined standard filters
-	constexpr static Filter SOBEL_X	 = {sobelX, 1};		// Sobel filter X (horizontal)
-	constexpr static Filter SOBEL_Y	 = {sobelY, 1};		// Sobel filter Y (horizontal)
-	constexpr static Filter GAUSS_5	 = {gauss5, 2};		// Harris Gaussian (Ixx, Iyy, Ixy)
-	constexpr static Filter GAUSS_1D = {gauss5_1D, 2};	// Harris Gaussian (Ixx, Iyy, Ixy)
-	constexpr static Filter NEG_LOG	 = {negLog, 2};		// negative LoG (Marr-Hildreth detector, "Mexican hat")
+	constexpr static Filter SOBEL_X	 = {sobelX, 1};								// Sobel filter X (horizontal)
+	constexpr static Filter SOBEL_Y	 = {sobelY, 1};								// Sobel filter Y (horizontal)
+	constexpr static Filter GAUSS_5	 = {gauss5, 2};								// Harris Gaussian (Ixx, Iyy, Ixy)
+	constexpr static Filter GAUSS_1D = {gauss5_1D, 2};							// Harris Gaussian (Ixx, Iyy, Ixy)
+	constexpr static Filter NEG_LOG	 = {negLog, 2};								// negative LoG (Marr-Hildreth detector, "Mexican hat")
 
 
-	// ========================================================== TextCode System ==========================================================
+	// ==================================================================  TextCode System  ======================================================================
 
 	/**
 	 * @brief Is holding the identifiers to the predefined constexpr log texts.
 	 */
 	enum class TextCode : uint8_t
 	{
-		None = 0,								//   0
-		// ------- GLAD & GLFW -------
-		GLFW_Init_Failed,						//   1
-		GLFW_Window_Failed,						//   2
-		GLAD_Init_Failed,						//   3
-		// --------- SysInfo ---------
-		SYS_Save_Path,							//   4
-		SYS_OS_Visual_Mode,						//   5
-		SYS_OS_Unknown_Dark_Mode,				//   6
-		SYS_OMP_Diag_Results,					//   7
-		SYS_OMP_Active,							//   8
-		SYS_OMP_RAW_Version,					//   9
-		SYS_OMP_V5_Plus,						//  10
-		SYS_OMP_V4_5,							//  11
-		SYS_OMP_V4_0,							//  12
-		SYS_OMP_Legacy,							//  13
-		SYS_OMP_Available_Threads,				//  14
-		SYS_OMP_Inactive,						//  15
-		SYS_OMP_Uninstalled,					//  16
-		// --- ImageProcessor (IP) ---
-		IP_Init,								//  17
-		IP_MAX_THREADS,							//  18
-		IP_CHUNK_SIZE,							//  19
-		IP_RGBA_resize,							//  20
-		IP_Load_IDX,							//  21
-		IP_stb_data_Failed,						//  22
-		IP_Save_IDX,							//  23
-		IP_stb_write_Failed,					//  24
-		IP_Delete_IDX,							//  25
-		IP_Select_IDX,							//  26
-		IP_Skip_Intensity,						//  27
-		IP_Skip_Contrast_NoOp,					//  28
-		IP_Skip_Contrast_OOR,					//  29
-		IP_Posterize_OOR,						//  30
-		IP_Pixel_Diff,							//  31
-		IP_Skip_Padding,						//  32
-		IP_Skip_PixelComp_Size,					//  33
-		IP_Skip_PixelComp_NotAvailable,			//  34
-		IP_Skip_Alpha0,							//  35
-		IP_PDFsum_CDF255,						//  36
-		IP_BHT,									//  37
-		IP_Alpha_OOR,							//  38
-		// --------- Metrics ---------
-		Metrics,								//  39
-		Metrics_Parallel,						//  40
-		Metrics_Comp,							//  41
-		// --------- Popups ----------
-		SysDiag_Header,							//  42
-		SysDiag_Footer,							//  43
-		ErrMsg_Header,							//  44
-		ErrMsg_Footer,							//  45
-		// ---------------------------
-		COUNT									//  46 = size of the enum
+		None = 0,												//   0
+		// ---------------- GLAD & GLFW ----------------
+		GLFW_Init_Failed,										//   1
+		GLFW_Window_Failed,										//   2
+		GLAD_Init_Failed,										//   3
+		// ------------------ SysInfo ------------------
+		SYS_Save_Path,											//   4
+		SYS_OS_Visual_Mode,										//   5
+		SYS_OS_Unknown_Dark_Mode,								//   6
+		SYS_OMP_Diag_Results,									//   7
+		SYS_OMP_Active,											//   8
+		SYS_OMP_RAW_Version,									//   9
+		SYS_OMP_V5_Plus,										//  10
+		SYS_OMP_V4_5,											//  11
+		SYS_OMP_V4_0,											//  12
+		SYS_OMP_Legacy,											//  13
+		SYS_OMP_Available_Threads,								//  14
+		SYS_OMP_Inactive,										//  15
+		SYS_OMP_Uninstalled,									//  16
+		// ------------ ImageProcessor (IP) ------------
+		IP_Init,												//  17
+		IP_MAX_THREADS,											//  18
+		IP_CHUNK_SIZE,											//  19
+		IP_RGBA_resize,											//  20
+		IP_Load_IDX,											//  21
+		IP_stb_data_Failed,										//  22
+		IP_Save_IDX,											//  23
+		IP_stb_write_Failed,									//  24
+		IP_Delete_IDX,											//  25
+		IP_Select_IDX,											//  26
+		IP_Skip_Intensity,										//  27
+		IP_Skip_Contrast_NoOp,									//  28
+		IP_Pixel_Diff,											//  29
+		IP_Skip_Padding,										//  30
+		IP_Skip_PixelComp_Size,									//  31
+		IP_Skip_PixelComp_NotAvailable,							//  32
+		IP_Skip_Alpha0,											//  33
+		IP_PDFsum_CDF255,										//  34
+		IP_HistoEqual_CDF_Failed,								//  35
+		IP_AutoSegm_CDF_Failed,									//  36
+		IP_AutoSegm_BHT_Failed,									//  37
+		IP_Save_toRGBA_Failed,									//  38
+		IP_Posterize_toRGBA_Failed,								//  39
+		IP_Image_Compare_toRGBA_Failed,							//  40
+		IP_Convolution_Padding_Failed,							//  41
+		IP_Convolution_Sobel_Failed,							//  42
+		IP_Convolution_Gauss_Failed,							//  43
+		IP_Alpha_OOR,											//  44
+		// ------------------ Metrics ------------------
+		Metrics,												//  45
+		Metrics_Parallel,										//  46
+		Metrics_Comp,											//  47
+		// ------------------ Popups -------------------
+		SysDiag_Header,											//  48
+		SysDiag_Footer,											//  59
+		ErrMsg_Header,											//  50
+		ErrMsg_Footer,											//  51
+		// ---------------------------------------------
+		COUNT													//  52 = size of the enum
 	};
 
 	/**
@@ -198,63 +205,69 @@ namespace PixelStudio
 	 */
 	constexpr std::array<std::string_view, static_cast<size_t>(TextCode::COUNT)> STATUS_TEXTS =
 	{
-		"",																			//   0
-		// ------------------------ GLFW & GLAD -------------------------
-		"ERROR: GLFW couldn't be initialized!\n",									//   1
-		"ERROR: GLFW window couldn't be created!\n",								//   2
-		"ERROR: GLAD couldn't be initialized!\n",									//   3
-		// -------------------------- SysInfo ---------------------------
-		"successfully created the default output directory!\n",						//   4
-		"Detected OS Visual Mode: {}.\n",											//   5
-		"Couln't detect a specific OS. Fallback Visual Mode: Dark Mode.\n",			//   6
-		"[SysInfo] OpenMP-Diagnosis results:\n",									//   7
-		"-> SUCCESS: OpenMP is installed and activated!\n",							//   8
-		"-> Detected [RAW] version: {}\n",											//   9
-		"-> Detected specification: OpenMP 5.0 or higher\n",						//  10
-		"-> Detected specification: OpenMP 4.5\n",									//  11
-		"-> Detected specification: OpenMP 4.0\n",									//  12
-		"-> Detected specification: legacy OpenMP version (< 4.0)\n",				//  13
-		"-> Available CPU-threads for OpenMP: {:3}\n",								//  14
+		"",																				//   0
+		// --------------------------- GLFW & GLAD ----------------------------
+		"ERROR: GLFW couldn't be initialized!\n",										//   1
+		"ERROR: GLFW window couldn't be created!\n",									//   2
+		"ERROR: GLAD couldn't be initialized!\n",										//   3
+		// ----------------------------- SysInfo ------------------------------
+		"successfully created the default output directory!\n",							//   4
+		"Detected OS Visual Mode: {}.\n",												//   5
+		"Couln't detect a specific OS. Fallback Visual Mode: Dark Mode.\n",				//   6
+		"[SysInfo] OpenMP-Diagnosis results:\n",										//   7
+		"-> SUCCESS: OpenMP is installed and activated!\n",								//   8
+		"-> Detected [RAW] version: {}\n",												//   9
+		"-> Detected specification: OpenMP 5.0 or higher\n",							//  10
+		"-> Detected specification: OpenMP 4.5\n",										//  11
+		"-> Detected specification: OpenMP 4.0\n",										//  12
+		"-> Detected specification: legacy OpenMP version (< 4.0)\n",					//  13
+		"-> Available CPU-threads for OpenMP: {:3}\n",									//  14
 		"-> WARNING: OpenMP (omp.h) is detected on your system,\n"
 		"   but the program was compiled /wo the compiler-flag!\n"
-		"   Please insert '-fopenmp' (Clang/GCC) to your build-flags.\n"			// or '/openmp' (MSVC)
-		"   The program currently runs in single-threaded-mode.\n",					//  15
+		"   Please insert '-fopenmp' (Clang/GCC) to your build-flags.\n"				// or '/openmp' (MSVC)
+		"   The program currently runs in single-threaded-mode.\n",						//  15
 		"-> DISCLAIMER: OpenMP is not found on your system!\n"
-		"   The program runs safely in single-threaded-mode.\n",					//  16
-		// --------------------- ImageProcessor (IP) ---------------------
-		"[ImageProcessor] initialization results:\n",								//  17
-		"system specific optimal MAX_THREADS: {:3}\n",								//  18
-		"system specific optimal  CHUNK_SIZE: {:3}\n",								//  19
-		"RGBA is resized to hold 16K UHD images!\n",								//  20
-		">load image IDX: {:4}   -- SUCCESS! --\n",									//  21
-		"loading image ->  -- FAILED! --\npath : \"{}\"\nerror: {}\n",				//  22
-		">save image IDX: {:4}   -- SUCCESS! --\n",									//  23
-		"saving image ->  -- FAILED! --\npath : \"{}\"\nerror: {}\n",				//  24
-		"> del image IDX: {:4}   -- SUCCESS! --\n",									//  25
-		"> sel image IDX: {:4}\n",													//  26
-		"intensity manip. skipped!\n(value must be within [-1.0, 1.0] \\{0})\n",	//  27
-		"contrast manip. skipped!\n(k = 1 changes nothing)\n",						//  28
-		"contrast manip. skipped!\n(value must be within [-1, 5])\n",				//  29
-		"posterization skipped!\n(range must be 1 <= exp <= 7)\n",					//  30
-		"num of \u0394 pixels: {:9}\n",												//  31
-		"padding skipped! (image -> unchanged!)\n",									//  32
-		"compare images skipped!\n(referred image has a different size)\n",			//  33
-		"compare images skipped!\n(referred image is not available)\n",				//  34
-		"skipped the operation!\n(the image is fully transparent)\n",				//  35
-		"sum PDF: {:8.6f} | CDF[255]: {:8.6f}\n",									//  36
-		"min = {:3}, max = {:3}, cen = {:3}, CDF[cen] = t = {}\n",					//  37
-		"Alpha manip. skipped!\n(value must be within [0.0, 1.0])\n",				//  38
-		// -------------------------- Metrics ----------------------------
-		"\u0394t ({}): {:7.2f} ms\n", 												//  39
-		"\u0394t ({}): {:7.2f} ms (parallel)\n",									//  40
-		"\u0394t (comp {:02}:{:02}): {:7.2f} ms\n",									//  41
-		// ----------------------- Popup Windows -------------------------
-		"System Diagnostics",														//  42
-		"Start Pixel Studio",														//  43
-		"Error Message",															//  44
-		"OK"																		//  45
-		// ---------------------------------------------------------------
-		// COUNT																	//  46
+		"   The program runs safely in single-threaded-mode.\n",						//  16
+		// ------------------------ ImageProcessor (IP) ------------------------
+		"[ImageProcessor] initialization results:\n",									//  17
+		"system specific optimal MAX_THREADS: {:3}\n",									//  18
+		"system specific optimal  CHUNK_SIZE: {:3}\n",									//  19
+		"RGBA is resized to hold 16K UHD images!\n",									//  20
+		">load image IDX: {:4}   -- SUCCESS! --\n",										//  21
+		"loading image ->  -- FAILED! --\npath : \"{}\"\nerror: {}\n",					//  22
+		">save image IDX: {:4}   -- SUCCESS! --\n",										//  23
+		"saving image ->  -- FAILED! --\npath : \"{}\"\nerror: {}\n",					//  24
+		"> del image IDX: {:4}   -- SUCCESS! --\n",										//  25
+		"> sel image IDX: {:4}\n",														//  26
+		"intensity manip. skipped!\n(value must be within [-1.0, 1.0] \\{0})\n",		//  27
+		"contrast manip. skipped!\n(k = 1 changes nothing)\n",							//  28
+		"num of \u0394 pixels: {:9}\n",													//  39
+		"padding skipped! (image -> unchanged!)\n",										//  30
+		"compare images skipped!\n(referred image has a different size)\n",				//  31
+		"compare images skipped!\n(referred image is not available)\n",					//  32
+		"skipped the operation!\n(the image is fully transparent)\n",					//  33
+		"sum PDF: {:8.6f} | CDF[255]: {:8.6f}\n",										//  34
+		"aborted HistoEqual -> CDF failed!\n",											//  35
+		"aborted autoSegm -> CDF failed!\n",											//  36
+		"aborted autoSegm -> BHT failed!\n",											//  37
+		"aborted save image -> toRGBA() failed!\n",										//  38
+		"aborted posterize -> toRGBA() failed!\n",										//  39
+		"aborted comparison -> toRGBA() failed!\n",										//  40
+		"aborted convolution -> padImg failed!\n",										//  41
+		"aborted convolution -> Sobel failed!\n",										//  42
+		"aborted convolution -> Gauss failed!\n",										//  43
+		"Alpha manip. skipped!\n(value must be within [0.0, 1.0])\n",					//  44
+		// ----------------------------- Metrics -------------------------------
+		"\u0394t ({}): {:7.2f} ms\n", 													//  45
+		"\u0394t ({}): {:7.2f} ms (parallel)\n",										//  46
+		"\u0394t (comp {:02}:{:02}): {:7.2f} ms\n",										//  47
+		// -------------------------- Popup Windows ----------------------------
+		"System Diagnostics",															//  48
+		"Start Pixel Studio",															//  49
+		"Error Message",																//  50
+		"OK"																			//  51
+		// ---------------------------------------------------------------------
+		// COUNT																		//  52
 	};
 
 	/**

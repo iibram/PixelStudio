@@ -13,9 +13,9 @@
 
 namespace PixelStudio
 {
-	// ===================================================================================================================================================
-	// ==============================================================   P  U  B  L  I  C   ===============================================================
-	// ===================================================================================================================================================
+	// =======================================================================================================================================================================
+	// ========================================================================   P  U  B  L  I  C   =========================================================================
+	// =======================================================================================================================================================================
 
 	/**
 	 * @brief Starts the "Pixel Studio" app and its immediate GUI, initializes the full environment and runs the rendering loop until the app is closed.
@@ -23,50 +23,49 @@ namespace PixelStudio
 	 */
 	int PixelStudioApp::run()
 	{
-		// ------------------------   S Y S T E M   ------------------------
+		// ---------------------------   S Y S T E M   ---------------------------
 		Result res;
 		SysInfo::checkDefaultOutDir(res);
 		SysInfo::checkVisualMode(res);
 		SysInfo::performOpenMPDiagnosis(res);
 
-		// --------------------------   G  U  I   --------------------------
+		// -----------------------------   G  U  I   -----------------------------
 		init(res);
 
 		if (!res.success)
 		{
-			uint8_t i = res.logs.size() - 1;															// get last entry (.size() <<< 255 -> uint8_t)
-			std::cout << formatEntry(res.logs[i].code, {});												// onto terminal (cause GUI itself has failed)
+			uint8_t i = res.logs.size() - 1;																	// get last entry (.size() <<< 255 -> uint8_t)
+			std::cout << formatEntry(res.logs[i].code, {});														// onto terminal (cause GUI itself has failed)
 			return -1;
 		}
 
-		// ---------------   I M A G E   P R O C E S S O R   ---------------
-		m_processor.init(res);																			// init ImageProcessor
+		// ------------------   I M A G E   P R O C E S S O R   ------------------
+		m_processor.init(res);																					// init ImageProcessor
 
-		setNextPopup(res, TextCode::SysDiag_Header, TextCode::SysDiag_Footer);							// set system diagnostics popup at start
+		setNextPopup(res, TextCode::SysDiag_Header, TextCode::SysDiag_Footer);									// set system diagnostics popup at start
 
-		// ----------------   R E N D E R I N G   L O O P   ----------------
-		while (!glfwWindowShouldClose(m_window))														// as long is running
+		// -------------------   R E N D E R I N G   L O O P   -------------------
+		while (!glfwWindowShouldClose(m_window))																// as long is running
 		{
-			beginFrame();																				// poll events & start new frame
-			renderUI();																					// set all components of a frame
-			endFrame();																					// ImGui::Render & glfwSwapBuffers
+			beginFrame();																						// poll events & start new frame
+			renderUI();																							// set all components of a frame
+			endFrame();																							// ImGui::Render & glfwSwapBuffers
 		}
 
-		shutdown();																						// shutdown properly when rendering loop stops
+		shutdown();																								// shutdown properly when rendering loop stops
 
 		return 0;
 	}
 
 
-	// ===================================================================================================================================================
-	// =============================================================   P  R  I  V  A  T  E   =============================================================
-	// ===================================================================================================================================================
 
+	// =======================================================================================================================================================================
+	// ======================================================================   P  R  I  V  A  T  E   ========================================================================
+	// =======================================================================================================================================================================
 
-
-	// ===================================================================================================================================================
-	// -------------------------------------------------  The Essential GUI Pipeline (+ Initialization)  -------------------------------------------------
-	// ===================================================================================================================================================
+	// =======================================================================================================================================================================
+	// -----------------------------------------------------------  The Essential GUI Pipeline (+ Initialization)  -----------------------------------------------------------
+	// =======================================================================================================================================================================
 
 	/**
 	 * @brief Initializes the main window according to the passed parameters properly for a GLFW supported ImGui application.
@@ -77,13 +76,13 @@ namespace PixelStudio
 	 */
 	void PixelStudioApp::init(Result & res)
 	{
-		m_currTheme = res.success ? UI::ThemeMode::DARK : UI::ThemeMode::LYTE;							// success bool was used to identify the OS theme
-		res.success = false;																			// reset for next indications
+		m_currTheme = res.success ? UI::ThemeMode::DARK : UI::ThemeMode::LYTE;									// success bool was used to identify the OS theme
+		res.success = false;																					// reset for next indications
 
-		// =============================================================== GLFW Setup ====================================================================
+		// ==================================================================== GLFW Setup ===========================================================================
 		if (!glfwInit())
 		{
-			res.logs.push_back({TextCode::GLFW_Init_Failed, {}});										// success = false
+			res.logs.push_back({TextCode::GLFW_Init_Failed, {}});												// success = false
 			return;
 		}
 
@@ -92,26 +91,26 @@ namespace PixelStudio
 		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 		glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-		GLFWmonitor* primaryMonitor = glfwGetPrimaryMonitor();											// get the dimensions of the primary display
+		GLFWmonitor* primaryMonitor = glfwGetPrimaryMonitor();													// get the dimensions of the primary display
 		float xScale = 1.0f, yScale = 1.0f;
 
 		if (primaryMonitor)
-			glfwGetMonitorContentScale(primaryMonitor, &xScale, &yScale);								// get the DX / DPI scaling
+			glfwGetMonitorContentScale(primaryMonitor, &xScale, &yScale);										// get the DX / DPI scaling
 
-		UI::em *= yScale;																				// DPI scaled `BaseFont` size
+		UI::em *= yScale;																						// DPI scaled `BaseFont` size
 
 		// start window resolution DPI scaled by the running specific display
 		UI::SCALED_W = static_cast<int>(UI::MIN_WIDTH * xScale);
 		UI::SCALED_H = static_cast<int>(UI::MIN_HEIGHT * yScale);
 
-		glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);														// generate the window invisible
+		glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);																// generate the window invisible
 		m_window = glfwCreateWindow(UI::SCALED_W, UI::SCALED_H, UI::APP_TITLE, nullptr, nullptr);
 
 		if (!m_window)
 		{
 			glfwTerminate();
 
-			res.logs.push_back({TextCode::GLFW_Window_Failed, {}});										// success = false
+			res.logs.push_back({TextCode::GLFW_Window_Failed, {}});												// success = false
 			return;
 		}
 
@@ -133,7 +132,7 @@ namespace PixelStudio
 		}
 		// ----------------------------------------------------------------------------
 
-		// hard constraints (min. size 1280 x 720 at a FullHD resolution)
+		// hard constraints (set min. size 1280 x 720 at a FullHD resolution)
 		glfwSetWindowSizeLimits(m_window, UI::SCALED_W, UI::SCALED_H, GLFW_DONT_CARE, GLFW_DONT_CARE);
 
 		if (primaryMonitor)
@@ -142,10 +141,10 @@ namespace PixelStudio
 
 			if (mode)
 			{
-				int xpos = ((mode->width - UI::SCALED_W) >> 1);											// calculate the center at x axis
-				int ypos = ((mode->height - UI::SCALED_H) >> 1);										// calculate the center at y axis
+				int xpos = ((mode->width - UI::SCALED_W) >> 1);													// calculate the center at x axis
+				int ypos = ((mode->height - UI::SCALED_H) >> 1);												// calculate the center at y axis
 
-				glfwSetWindowPos(m_window, xpos, ypos);													// drop the window centered on the screen
+				glfwSetWindowPos(m_window, xpos, ypos);															// drop the window centered on the screen
 			}
 		}
 
@@ -153,15 +152,13 @@ namespace PixelStudio
 
 		if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
 		{
-			res.logs.push_back({TextCode::GLAD_Init_Failed, {}});										// success = false
+			res.logs.push_back({TextCode::GLAD_Init_Failed, {}});												// success is set false
 			return;
 		}
 
-		// FRÜHER HIER GEWESEN !!!
+		glfwSwapInterval(1);																					// 1 = V-Sync /w monitor-FPS (e.g. 60 Hz = 60 FPS)
 
-		glfwSwapInterval(1);																			// 1 = V-Sync /w monitor-FPS (e.g. 60 Hz = 60 FPS)
-
-		// ========================================================== ImGui Setup / Context ==============================================================
+		// =============================================================== ImGui Setup / Context =====================================================================
 		IMGUI_CHECKVERSION();
 		ImGui::CreateContext();
 
@@ -169,13 +166,13 @@ namespace PixelStudio
 		ImGui_ImplGlfw_InitForOpenGL(m_window, true);
 		ImGui_ImplOpenGL3_Init("#version 330");
 
-		queryGPUInfo();																					// getting vendor & avail VRAM size
+		queryGPUInfo();																							// getting vendor & avail VRAM size
 
-		UI::setFonts(yScale);																			// setting the selected ttf Fonts
-		UI::applyTheme(m_currTheme);																	// setting the selected OS specific theme as base
+		UI::setFonts(yScale);																					// setting the selected ttf Fonts
+		UI::applyTheme(m_currTheme);																			// setting the selected OS specific theme as base
 
-		ImGui::GetStyle().ScaleAllSizes(yScale);														// scaling ImGui internal layout/paddings
-		UI::scaleDimensions();																			// scaling the apps custom design
+		ImGui::GetStyle().ScaleAllSizes(yScale);																// scaling ImGui internal layout/paddings
+		UI::scaleDimensions();																					// scaling the apps custom design
 
 		// dynamically clear the first frame (stutter elimination)
 		ImVec4 currBg = ImGui::GetStyle().Colors[ImGuiCol_WindowBg];
@@ -190,14 +187,14 @@ namespace PixelStudio
 	 */
 	void PixelStudioApp::beginFrame()
 	{
-		if (m_themeChanged)																				// check & poll theme change events
+		if (m_themeChanged)																						// check & poll theme change events
 		{
 			m_currTheme = m_nextTheme;
 			UI::applyTheme(m_currTheme);
 			m_themeChanged = false;
 		}
 
-		glfwWaitEvents();																				// (*): FPS only at actions (waiting barrier)
+		glfwWaitEvents();																						// (*): FPS only at actions (waiting barrier)
 
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
@@ -209,20 +206,20 @@ namespace PixelStudio
 	 */
 	void PixelStudioApp::renderUI()
 	{
-		// =============================================================== Main Window ===================================================================
+		// ==================================================================== Main Window ==========================================================================
 
-		const ImGuiViewport* viewport = ImGui::GetMainViewport();										// using main viewport as base for the app window
+		const ImGuiViewport* viewport = ImGui::GetMainViewport();												// using main viewport as base for the app window
 		ImGui::SetNextWindowPos(viewport->WorkPos);
 		ImGui::SetNextWindowSize(viewport->WorkSize);
 
-		ImGuiWindowFlags windowFlags = ImGuiWindowFlags_MenuBar											// borderless main window for the whole screen
+		ImGuiWindowFlags windowFlags = ImGuiWindowFlags_MenuBar													// borderless main window for the whole screen
 			| ImGuiWindowFlags_NoTitleBar
 			| ImGuiWindowFlags_NoResize
 			| ImGuiWindowFlags_NoMove
 			| ImGuiWindowFlags_NoCollapse
 			| ImGuiWindowFlags_NoBringToFrontOnFocus;
 
-		// =============================================================== ImGui begin ===================================================================
+		// ==================================================================== ImGui begin ==========================================================================
 
 		ImGui::Begin("PixelStudioMain", nullptr, windowFlags);
 
@@ -235,7 +232,7 @@ namespace PixelStudio
 
 		ImGui::End();
 
-		// ================================================================ ImGui end ====================================================================
+		// ===================================================================== ImGui end ===========================================================================
 	}
 
 	/**
@@ -245,7 +242,7 @@ namespace PixelStudio
 	 */
 	void PixelStudioApp::endFrame()
 	{
-		ImGui::Render();																				// the ACTUAL rendering
+		ImGui::Render();																						// the ACTUAL rendering
 
 		// setting framebuffer size & viewport (since resizing is enabled)
 		int display_w = 0, display_h = 0;
@@ -258,15 +255,14 @@ namespace PixelStudio
 		static int last_w = display_w;
 		static int last_h = display_h;
 
-		// helper lambda: Exact framebuffer size in MB
-		// (RGBA8 Color Buffer + Depth/Stencil Buffer = 8 Bytes/Pixel * 2 (Double Buffer))
+		// lambda helper: Exact framebuffer size in MB
 		auto calcFramebufferVRAM = [](int w, int h) -> float {
 			constexpr float BYTES_PER_PIXEL = 8.0f;
-			constexpr float BUFFER_COUNT    = 2.0f; // Front & Back Buffer
+			constexpr float BUFFER_COUNT    = 2.0f; 															// Front & Back Buffer
 			return (static_cast<float>(w * h) * BYTES_PER_PIXEL * BUFFER_COUNT) * BYTES_TO_MB;
 		};
 
-		// start calculating from frame 2
+		// from frame > 1 --> start calculating window resolution affect on VRAM usage
 		if (!m_firstFrame)
 		{
 			if (display_w != last_w || display_h != last_h)
@@ -285,6 +281,7 @@ namespace PixelStudio
 				last_h = display_h;
 			}
 		}
+		// ----------------------------------------------------------------------------
 
 		// dynamically clearing /w the current ImGui Theme
 		ImVec4 bg = ImGui::GetStyle().Colors[ImGuiCol_WindowBg];
@@ -300,11 +297,11 @@ namespace PixelStudio
 		// ----------------------------------------------------------------------------
 		if (m_firstFrame)
 		{
-			glfwShowWindow(m_window);						// show synced first frame
+			glfwShowWindow(m_window);																			// show synced first frame
 
 			updateAvailVRAM(VRAM::UPDATE_AVAIL_VRAM);
-			m_GPU.avail_VRAM -= 2.0f;						// 2 MB baseline adjustment
-			m_GPU.total_VRAM = m_GPU.avail_VRAM;			// Synchronize
+			m_GPU.avail_VRAM -= 2.0f;																			// 2 MB baseline adjustment
+			m_GPU.total_VRAM = m_GPU.avail_VRAM;																// synchronize
 
 			// Set baseline for resize monitoring exactly to the initial framebuffer
 			last_w = display_w;
@@ -319,7 +316,7 @@ namespace PixelStudio
 	 */
 	void PixelStudioApp::shutdown()
 	{
-		// delete existing  inspection data
+		// delete existing inspection data
 		m_inspectionData.clear();
 
 		// delete existing image textures
@@ -343,16 +340,16 @@ namespace PixelStudio
 	}
 
 
-	// ===================================================================================================================================================
-	// -----------------------------------------------------  Performing the GUI pipeline (Widgets)  -----------------------------------------------------
-	// ===================================================================================================================================================
+	// =======================================================================================================================================================================
+	// ---------------------------------------------------------------  Performing the GUI pipeline (Widgets)  ---------------------------------------------------------------
+	// =======================================================================================================================================================================
 
 	/**
 	 * @brief Shows the next popup window (center of main window) with important data, such as the essential system environments for the app or failures.
 	 */
 	void PixelStudioApp::renderPopup()
 	{
-		// ------------------------------------------------------------------ Popup ----------------------------------------------------------------------
+		// ------------------------------------------------------------------------ Popup ----------------------------------------------------------------------------
 
 		if (m_popupToShow)
 		{
@@ -390,12 +387,12 @@ namespace PixelStudio
 	 */
 	void PixelStudioApp::renderMenuBar()
 	{
-		// ----------------------------------------------------------------- Menu Bar --------------------------------------------------------------------
+		// ----------------------------------------------------------------------- Menu Bar --------------------------------------------------------------------------
 
-		ImVec4 textCol = ImColor(ImGui::GetStyleColorVec4(ImGuiCol_Text)).Value;						// get mode based text color
-		textCol.w = 0.7f;																				// reduce Alpha to 70%
+		ImVec4 textCol = ImColor(ImGui::GetStyleColorVec4(ImGuiCol_Text)).Value;								// get mode based text color
+		textCol.w = 0.7f;																						// reduce Alpha to 70%
 
-		ImGui::PushStyleColor(ImGuiCol_Text, textCol);													// push stightly less decent text color
+		ImGui::PushStyleColor(ImGuiCol_Text, textCol);															// push stightly less decent text color
 
 		if (ImGui::BeginMenuBar())
 		{
@@ -437,7 +434,7 @@ namespace PixelStudio
 	 */
 	void PixelStudioApp::renderCustomTabBar()
 	{
-		// -------------------------------------------------------------- Custom TAB Bar -----------------------------------------------------------------
+		// -------------------------------------------------------------------- Custom TAB Bar -----------------------------------------------------------------------
 
 		if (m_tabs.empty()) ImGui::Dummy(ImVec2(0.0f, UI::em + UI::TabDim.y));
 
@@ -455,16 +452,16 @@ namespace PixelStudio
 				if (PixelStudio::UI::CustomTabButton(m_tabs[i].label.c_str(), m_tabs[i].fName.c_str(), isActive, isSelected))
 					closeIDX = i;
 
-				if (isSelected && !isActive)															// only when user selects another TAB
+				if (isSelected && !isActive)																	// only when user selects another TAB
 					tabSelected(i);
 
-				ImGui::SameLine(0.0f, UI::Padding.y);													// spacing to next Custom TAB
+				ImGui::SameLine(0.0f, UI::Padding.y);															// spacing to next Custom TAB
 				ImGui::PopID();
 			}
 			ImGui::NewLine();
 
-			if (closeIDX != -1)																			// when user closes a TAB
-				tabClosed(closeIDX);																	// closing it outside the TAB loop (iterator valid)
+			if (closeIDX != -1)																					// when user closes a TAB
+				tabClosed(closeIDX);																			// closing it outside the TAB loop (iterator valid)
 		}
 	}
 
@@ -473,17 +470,17 @@ namespace PixelStudio
 	 */
 	void PixelStudioApp::renderSelectors()
 	{
-		// --------------------------------------------- Calculation of the full area of the "Selector" --------------------------------------------------
+		// ---------------------------------------------------- Calculation of the full area of the "Selector" -------------------------------------------------------
 
-		m_mainContentSize	 = ImGui::GetContentRegionAvail();						// getting the remaining size (after MenuBar & CustomTabBar)
+		m_mainContentSize	 = ImGui::GetContentRegionAvail();									// getting the remaining size (after MenuBar & CustomTabBar)
 
-		m_mainContentSize.x	-= (UI::Selector_W + UI::Padding.x);					// subtract Selector + pad of width
-		m_mainContentSize.y	-= UI::InfoBar_H;										// subtract InfoBar from the height	-> mainContentSize (ready) !!!
+		m_mainContentSize.x	-= (UI::Selector_W + UI::Padding.x);								// subtract Selector + pad of width
+		m_mainContentSize.y	-= UI::InfoBar_H;													// subtract InfoBar from the height	-> mainContentSize (ready) !!!
 
-		m_mainContentSize.x	= std::max(1.0f, m_mainContentSize.x);					// safety guard during resize
-		m_mainContentSize.y	= std::max(1.0f, m_mainContentSize.y);					// safety guard during resize
+		m_mainContentSize.x	= std::max(1.0f, m_mainContentSize.x);								// safety guard during resize
+		m_mainContentSize.y	= std::max(1.0f, m_mainContentSize.y);								// safety guard during resize
 
-		// ------------------------------------------------------------- Selector Area -------------------------------------------------------------------
+		// -------------------------------------------------------------------- Selector Area ------------------------------------------------------------------------
 
 		static SelectorSettings defaultSettings {};
 		auto& s = !m_tabs.empty() ? m_tabs[m_IDX].settings : defaultSettings;
@@ -512,9 +509,9 @@ namespace PixelStudio
 			const ImVec2 fullBtnDim = ImVec2(fullAvail_W, 0.0f);
 			ImVec2 applyBtnDim;
 
-			// ==================================================================================================================
-			// 										 T O P   C O N T R O L   S E C T I O N
-			// ==================================================================================================================
+			// =============================================================================================================================================
+			// 														T O P   C O N T R O L   S E C T I O N
+			// =============================================================================================================================================
 			ImGui::BeginChild("TopControlSection", ImVec2(0, topHeight), false, noScrollbar);
 
 			ImGui::Separator();
@@ -522,9 +519,9 @@ namespace PixelStudio
 
 			ImGui::BeginDisabled(m_tabs.empty());
 
-			// ==================================================================================================
-			// > GLOBAL MANIPULATIONS
-			// ==================================================================================================
+			// ====================================================================================================
+			// 										  > GLOBAL MANIPULATIONS
+			// ====================================================================================================
 			if (ImGui::CollapsingHeader("Global Manipulations"))
 			{
 				// static slider min max vals
@@ -533,7 +530,7 @@ namespace PixelStudio
 
 				ImGuiTreeNodeFlags treeFlags = ImGuiTreeNodeFlags_NoTreePushOnOpen | ImGuiTreeNodeFlags_SpanAvailWidth;
 
-				// ---------------------------------  ADD INTENSITY  -----------------------------------
+				// -----------------------------------  ADD INTENSITY  ------------------------------------
 				if (ImGui::TreeNodeEx("Intesity (additive)##Node", treeFlags))
 				{
 					ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, UI::Line);
@@ -542,7 +539,7 @@ namespace PixelStudio
 					ImGui::PopStyleVar();
 
 					ImGui::SameLine();
-					applyBtnDim  = ImVec2(ImGui::GetContentRegionAvail().x, 0.0f);						// set applyBtnDim dynamically (right end)
+					applyBtnDim  = ImVec2(ImGui::GetContentRegionAvail().x, 0.0f);								// set applyBtnDim dynamically (right end)
 
 					if (ImGui::Button("apply##AddIntensity", applyBtnDim))
 					{
@@ -554,7 +551,7 @@ namespace PixelStudio
 					ImGui::Spacing();
 				}
 
-				// --------------------------------  SCALE INTENSITY  ----------------------------------
+				// ----------------------------------  SCALE INTENSITY  -----------------------------------
 				if (ImGui::TreeNodeEx("Intesity (scaled)##Node", treeFlags))
 				{
 					ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, UI::Line);
@@ -573,7 +570,7 @@ namespace PixelStudio
 					ImGui::Spacing();
 				}
 
-				// -----------------------------------  CONTRAST  --------------------------------------
+				// -------------------------------------  CONTRAST  ---------------------------------------
 				if (ImGui::TreeNodeEx("Contrast##Node", treeFlags))
 				{
 					ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, UI::Line);
@@ -592,7 +589,7 @@ namespace PixelStudio
 					ImGui::Spacing();
 				}
 
-				// -----------------------------------  POSTERIZE  -------------------------------------
+				// -------------------------------------  POSTERIZE  --------------------------------------
 				if (ImGui::TreeNodeEx("Posterize##Node", treeFlags))
 				{
 					//ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
@@ -612,7 +609,7 @@ namespace PixelStudio
 					ImGui::Spacing();
 				}
 
-				// -----------------------------------  SET ALPHA  -------------------------------------
+				// -------------------------------------  SET ALPHA  --------------------------------------
 				if (ImGui::TreeNodeEx("Set Alpha##Node", treeFlags))
 				{
 					ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, UI::Line);
@@ -631,7 +628,7 @@ namespace PixelStudio
 					ImGui::Spacing();
 				}
 
-				// ----------------------------------  SEGMENTATION  -----------------------------------
+				// ------------------------------------  SEGMENTATION  ------------------------------------
 				if (ImGui::TreeNodeEx("Manual Segmentation##Node", treeFlags))
 				{
 					uint8_t segmType = 0;
@@ -664,7 +661,7 @@ namespace PixelStudio
 					ImGui::Spacing();
 				}
 
-				// -------------------------------  AUTO SEGMENTATION  ---------------------------------
+				// ---------------------------------  AUTO SEGMENTATION  ----------------------------------
 				if (ImGui::TreeNodeEx("Auto Segmentation##Node", treeFlags))
 				{
 					uint8_t autoSegmType = 0;
@@ -690,7 +687,7 @@ namespace PixelStudio
 					ImGui::Spacing();
 				}
 
-				// -----------------------------------  NEGATIVE  --------------------------------------
+				// -------------------------------------  NEGATIVE  ---------------------------------------
 				if (ImGui::Button("Invert (Negative)", fullBtnDim))
 				{
 					Result res = m_processor.toNegative();
@@ -701,7 +698,7 @@ namespace PixelStudio
 					ImGui::Spacing();
 				}
 
-				// ---------------------------------  AUTO HISTOGRAM  ----------------------------------
+				// -----------------------------------  AUTO HISTOGRAM  -----------------------------------
 				if (ImGui::Button("Auto Histogram Equalization", fullBtnDim))
 				{
 					Result res = m_processor.applyHistogramEqualization();
@@ -717,9 +714,9 @@ namespace PixelStudio
 			ImGui::Separator();
 			ImGui::Spacing();
 
-			// ==================================================================================================
-			// > LOCAL MANIPULATIONS
-			// ==================================================================================================
+			// ====================================================================================================
+			// 										  > LOCAL MANIPULATIONS
+			// ====================================================================================================
 			if (ImGui::CollapsingHeader("Local Manipulations"))
 			{
 				const GLuint origTexID = m_tabs[m_IDX].texID;
@@ -737,20 +734,20 @@ namespace PixelStudio
 				ImGui::Separator();
 				ImGui::Spacing();
 
-				// ------------------------------------------------------------------------------------------
-				// 						   		HARRIS-STEPHENS CORNER DETECTOR
-				// ------------------------------------------------------------------------------------------
+				// -------------------------------------------------------------------------------------------
+				// 								  HARRIS-STEPHENS CORNER DETECTOR
+				// -------------------------------------------------------------------------------------------
 				if (ImGui::CollapsingHeader("Harris-Stephens Corner Detector"))
 				{
-					// -----------------------------------------------------------------------------------
+					// ------------------------------------------------------------------------------------
 					ImGui::TextDisabled("Derivatives & Inspection:");
-					// -----------------------------------------------------------------------------------
+					// ------------------------------------------------------------------------------------
 					ImGui::BeginDisabled(!isInspectionActive);
 
 					if (UI::ToggleButton("Show Ix", isIxActive, leftDim))
 						m_activeTexID = isIxActive ? origTexID : m_inspectionData.getOrFetchIx();
 					ImGui::SameLine();
-					ImVec2 rightDim = ImVec2(ImGui::GetContentRegionAvail().x, 0.0f);					// set right inspection btn width dynamically
+					ImVec2 rightDim = ImVec2(ImGui::GetContentRegionAvail().x, 0.0f);							// set right inspection btn width dynamically
 					if (UI::ToggleButton("Show Iy", isIyActive, rightDim))
 						m_activeTexID = isIyActive ? origTexID : m_inspectionData.getOrFetchIy();
 
@@ -768,9 +765,9 @@ namespace PixelStudio
 					ImGui::SliderFloat("##dot_color", &s.harr_ColorHue, 0.0f, 1.0f, "Color");
 					// ImGui::PopStyleVar();
 
-					// -----------------------------------------------------------------------------------
-					// 								   Keypoints Control
-					// -----------------------------------------------------------------------------------
+					// ------------------------------------------------------------------------------------
+					// 									Keypoints Control
+					// ------------------------------------------------------------------------------------
 					ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, UI::CheckVec2);
 					ImGui::Checkbox("Render Keypoints", &s.harr_Keypoints);
 
@@ -785,14 +782,14 @@ namespace PixelStudio
 					ImGui::PopFont();
 
 					ImGui::PopStyleVar(2); // Line, CheckVec2
-					// -----------------------------------------------------------------------------------
+					// ------------------------------------------------------------------------------------
 
 					ImGui::EndDisabled();
 					ImGui::Spacing();
 
-					// -----------------------------------------------------------------------------------
+					// ------------------------------------------------------------------------------------
 					ImGui::TextDisabled("Algorithm Parameters:");
-					// -----------------------------------------------------------------------------------
+					// ------------------------------------------------------------------------------------
 					ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, UI::Line);
 
 					ImGui::PushItemWidth(UI::SliderB_W);
@@ -823,12 +820,12 @@ namespace PixelStudio
 						m_inspectionData.updateThreshold(res, s.harr_Thresh);
 						setNextLog(res);
 					}
-					ImGui::PopItemWidth(); // SliderB_W
-					ImGui::PopStyleVar(); // Line
+					ImGui::PopItemWidth();	// SliderB_W
+					ImGui::PopStyleVar();	// Line
 
 					ImGui::Spacing();
 
-					// ---------------------- Harris Corner Detection Compute Button ---------------------
+					// ----------------------- Harris Corner Detection Compute Button ---------------------
 					ImGui::BeginDisabled(isInspectionActive);
 
 					if (ImGui::Button("Compute Detection", fullBtnDim))
@@ -842,16 +839,16 @@ namespace PixelStudio
 						ImGui::Spacing();
 					}
 					ImGui::EndDisabled();
-					// -----------------------------------------------------------------------------------
+					// ------------------------------------------------------------------------------------
 
 				}
 				ImGui::Spacing();
 				ImGui::Separator();
 				ImGui::Spacing();
 
-				// ------------------------------------------------------------------------------------------
-				// 					 SIFT (SCALE-INVARIANT FEATURE TRANSFORM) [UPCOMING]
-				// ------------------------------------------------------------------------------------------
+				// -------------------------------------------------------------------------------------------
+				// 						SIFT (SCALE-INVARIANT FEATURE TRANSFORM) [UPCOMING]
+				// -------------------------------------------------------------------------------------------
 				if (ImGui::CollapsingHeader("SIFT (Scale-Invariant Feature Transform)"))
 				{
 					ImGui::TextDisabled("[Upcoming]");
@@ -860,9 +857,9 @@ namespace PixelStudio
 				ImGui::Separator();
 				ImGui::Spacing();
 
-				// ------------------------------------------------------------------------------------------
-				// 						SURF (SPEEDED UP ROBUST FEATURE) [UPCOMING]
-				// ------------------------------------------------------------------------------------------
+				// -------------------------------------------------------------------------------------------
+				// 							SURF (SPEEDED UP ROBUST FEATURE) [UPCOMING]
+				// -------------------------------------------------------------------------------------------
 				if (ImGui::CollapsingHeader("SURF (Speeded Up Robust Features)"))
 				{
 					ImGui::TextDisabled("[Upcoming]");
@@ -876,9 +873,9 @@ namespace PixelStudio
 			ImGui::EndChild(); // end: TopControlSection
 
 
-			// ==================================================================================================================
-			// 							 B O T T O M   C O N T R O L   S E C T I O N   (Performance Log)
-			// ==================================================================================================================
+			// =============================================================================================================================================
+			// 											  B O T T O M   C O N T R O L   S E C T I O N   (Performance Log)
+			// =============================================================================================================================================
 			if (ImGui::CollapsingHeader("Performance Log", ImGuiTreeNodeFlags_DefaultOpen))
 			{
 				m_isLogOpen = true;
@@ -903,20 +900,20 @@ namespace PixelStudio
 	 */
 	void PixelStudioApp::renderImageArea()
 	{
-		// ---------------------------------------------- Calculation of the rendering area for images ---------------------------------------------------
+		// ---------------------------------------------------- Calculation of the rendering area for images ---------------------------------------------------------
 
-		ImGui::SameLine(); 															// placing the image area directly to the right of the "Selector Area"
+		ImGui::SameLine(); 																		// placing the image area directly to the right of the "Selector Area"
 
-		m_mainContentPos = ImGui::GetCursorScreenPos();          					// top-left pos (0, 0) of the full main content area (incl. frames)
+		m_mainContentPos = ImGui::GetCursorScreenPos();          								// top-left pos (0, 0) of the full main content area (incl. frames)
 
-		m_renderPos.x  = UI::Line + UI::Padding.x;									// setting renderPos X
-		m_renderPos.y  = UI::Line + UI::Padding.x;									// setting renderPos Y		 		-> renderPos (ready) !!!
-		m_renderSize.x = m_mainContentSize.x - (UI::Line_X2 + UI::Padding_X2);		// setting renderSize width
-		m_renderSize.y = m_mainContentSize.y - (UI::Line_X2 + UI::Padding_X2);		// setting renderSize height 		-> renderSize (ready) !!!
+		m_renderPos.x  = UI::Line + UI::Padding.x;												// setting renderPos X
+		m_renderPos.y  = UI::Line + UI::Padding.x;												// setting renderPos Y		 		-> renderPos (ready) !!!
+		m_renderSize.x = m_mainContentSize.x - (UI::Line_X2 + UI::Padding_X2);					// setting renderSize width
+		m_renderSize.y = m_mainContentSize.y - (UI::Line_X2 + UI::Padding_X2);					// setting renderSize height 		-> renderSize (ready) !!!
 
-		// --------------------------------------------------------------- Image Area --------------------------------------------------------------------
+		// --------------------------------------------------------------------- Image Area --------------------------------------------------------------------------
 
-		ImGui::SetCursorScreenPos(m_mainContentPos);													// pos (0, 0) of the whole "Image Area"
+		ImGui::SetCursorScreenPos(m_mainContentPos);															// pos (0, 0) of the whole "Image Area"
 
 		if (ImGui::BeginChild("ImageRegion", m_mainContentSize, true, ImGuiWindowFlags_NoScrollbar))
 		{
@@ -950,12 +947,12 @@ namespace PixelStudio
 					float offsetX = (m_renderSize.x - finalSize.x) * 0.5f;
 					float offsetY = (m_renderSize.y - finalSize.y) * 0.5f;
 
-					ImGui::SetCursorPos(ImVec2(m_renderPos.x + offsetX, m_renderPos.y + offsetY));		// set the offset onto the pre-calculated renderPos
+					ImGui::SetCursorPos(ImVec2(m_renderPos.x + offsetX, m_renderPos.y + offsetY));				// set the offset onto the pre-calculated renderPos
 
-					ImVec2 imgStartPos = ImGui::GetCursorScreenPos();									// save image start position and
-					float imgScale	   = finalSize.x / img_w;											// the scale for KEYPOINT OVERLAY
+					ImVec2 imgStartPos = ImGui::GetCursorScreenPos();											// save image start position and
+					float imgScale	   = finalSize.x / img_w;													// the scale for KEYPOINT OVERLAY
 
-					ImGui::Image((ImTextureID)(uintptr_t)m_activeTexID, finalSize);						// render the image
+					ImGui::Image((ImTextureID)(uintptr_t)m_activeTexID, finalSize);								// render the image
 
 					// -------------------------------- KEYPOINT OVERLAY PASS -----------------------------------
 					auto keypoints = m_inspectionData.getKeypoints();
@@ -991,7 +988,7 @@ namespace PixelStudio
 	 */
 	void PixelStudioApp::renderInfoBar()
 	{
-		// ----------------------------------------------------------------- Info Bar --------------------------------------------------------------------
+		// ----------------------------------------------------------------------- Info Bar --------------------------------------------------------------------------
 
 		ImGui::PushStyleColor(ImGuiCol_ChildBg, UI::TransparentVec4);
 
@@ -1072,11 +1069,11 @@ namespace PixelStudio
 	}
 
 
-	// ===================================================================================================================================================
-	// ----------------------------------------------------  User Input Controls (the essential ones)  ---------------------------------------------------
-	// ===================================================================================================================================================
+	// =======================================================================================================================================================================
+	// --------------------------------------------------------------  User Input Controls (the essential ones)  -------------------------------------------------------------
+	// =======================================================================================================================================================================
 
-	// ----------------------------------------   L O A D   -----------------------------------------
+	// ------------------------------------------   L O A D   -------------------------------------------
 	void PixelStudioApp::loadClicked()
 	{
 		fs::path loadPath = (m_tabs.size() == 0) ? DEFAULT_LOAD_PATH : m_tabs[m_IDX].srcPath.parent_path();
@@ -1126,7 +1123,7 @@ namespace PixelStudio
 			setNextPopup(res, TextCode::ErrMsg_Header, TextCode::ErrMsg_Footer);
 	}
 
-	// ----------------------------------------   S A V E   -----------------------------------------
+	// ------------------------------------------   S A V E   -------------------------------------------
 	void PixelStudioApp::saveClicked()
 	{
 		if (m_tabs.empty()) return;
@@ -1152,7 +1149,7 @@ namespace PixelStudio
 			setNextPopup(res, TextCode::ErrMsg_Header, TextCode::ErrMsg_Footer);
 	}
 
-	// --------------------------------------   S E L E C T   ---------------------------------------
+	// ----------------------------------------   S E L E C T   -----------------------------------------
 	void PixelStudioApp::tabSelected(int idx)
 	{
 		Result res;
@@ -1164,49 +1161,50 @@ namespace PixelStudio
 		setNextLog(res);
 	}
 
-	// --------------------------------------   D E L E T E   ---------------------------------------
+	// -----------------------------------------   C L O S E   ------------------------------------------
 	void PixelStudioApp::tabClosed(int idx)
 	{
-		glDeleteTextures(1, &m_tabs[idx].texID);														// clean the texture of the GPUs VRAM
+		glDeleteTextures(1, &m_tabs[idx].texID);																// clean the texture of the GPUs VRAM
 
-		if (m_inspectionData.stamp == m_tabs[idx].stamp)												// if inspection data belongs to closing TAB
-			m_inspectionData.clear();																	// clear inspection data
+		if (m_inspectionData.stamp == m_tabs[idx].stamp)														// if inspection data belongs to closing TAB
+			m_inspectionData.clear();																			// clear inspection data
 
 		updateAvailVRAM(VRAM::DEALLOC, m_tabs[idx].width, m_tabs[idx].height);
 
 		m_tabs.erase(m_tabs.begin() + idx);
 
-		if (idx < m_IDX)	   m_IDX -= 1;																// _ [X] _  IDX					-= 1
-		else if (idx == m_IDX) m_IDX = static_cast<int>(m_tabs.size()) - 1;								// _ _ _ _ [IDX] _  _			to last
-																										// _ _ _ _  IDX	 _ [X] _		no Op
+		if (idx < m_IDX)	   m_IDX -= 1;																		// _ [X] _  IDX					-= 1
+		else if (idx == m_IDX) m_IDX = static_cast<int>(m_tabs.size()) - 1;										// _ _ _ _ [IDX] _  _			to last
+																												// _ _ _ _  IDX	 _ [X] _		no Op
 
-		Result res = m_processor.deleteImage(idx);
+		Result res = m_processor.closeImage(idx);
 
-		if (m_IDX != -1)																				// if any TAB still exist
+		if (m_IDX != -1)																						// if any TAB still exist
 		{
 			m_activeTexID = m_tabs[m_IDX].texID;
 			res = m_processor.selectImage(m_IDX, res);
 		}
-		else																							// else all closed
+		else																									// else all closed
 			m_activeTexID = 0;
 
 		setNextLog(res);
 	}
 
 
-	// ===================================================================================================================================================
-	// ----------------------------------------------------------------  Helper Functions  ---------------------------------------------------------------
-	// ===================================================================================================================================================
+	// =======================================================================================================================================================================
+	// -------------------------------------------------------------------------  Helper Functions  --------------------------------------------------------------------------
+	// =======================================================================================================================================================================
 
 	/**
 	 * @brief Loads the data of the passed `ImageTab` as 2D texture into the VRAM of the GPU via GLFW and OpenGL.
 	 * @param tab the `ImageTab` to load the texture from
+	 * @param buff an `ImageBufferView` which is updated and provided by the `ImageProcesseor` like a snapshot for temporary use
 	 */
 	void PixelStudioApp::setTextureID(ImageTab & tab, const ImageBufferView& buff)
 	{
 		// if a texture already exists for this tab, release the old one
 		if (tab.texID == 0)
-			glGenTextures(1, &tab.texID);																// request a new texture ID on the GPU
+			glGenTextures(1, &tab.texID);																		// request a new texture ID on the GPU
 
 		// bind IN
 		glBindTexture(GL_TEXTURE_2D, tab.texID);
@@ -1229,7 +1227,7 @@ namespace PixelStudio
 
 	/**
 	 * @brief Updates the current TAB's buffer by the passed `ImageBufferView` pointer and also invokes the update of the 2D texture on the VRAM.
-	 * @param buffer a `ImageBufferView` pointer which is updated and provided by the `ImageProcesseor` like a snapshot for temporary use
+	 * @param buffer an `ImageBufferView` which is updated and provided by the `ImageProcesseor` like a snapshot for temporary use
 	 */
 	void PixelStudioApp::updateBuffer(const ImageBufferView& buff)
 	{
@@ -1253,7 +1251,6 @@ namespace PixelStudio
 
 	/**
 	 * @brief Organizes the Performance Log widget and sets the next log to show
-	 * @param res
 	 */
 	void PixelStudioApp::setNextLog(const Result & res)
 	{
@@ -1335,7 +1332,6 @@ namespace PixelStudio
 			float amount = toMB(w, h);
 			m_GPU.used_VRAM  += amount;
 			m_GPU.avail_VRAM -= amount;
-			//m_GPU.avail_VRAM = m_GPU.total_VRAM - m_GPU.used_VRAM;
 		}
 
 		else if (access_mode == VRAM::DEALLOC)
@@ -1343,7 +1339,6 @@ namespace PixelStudio
 			float amount	  = toMB(w, h);
 			m_GPU.used_VRAM  -= amount;
 			m_GPU.avail_VRAM += amount;
-			//m_GPU.used_VRAM -= toMB(w, h);
 		}
 
 		else
@@ -1359,7 +1354,7 @@ namespace PixelStudio
 			{
 				GLint memInfo[4];
 				glGetIntegerv(GL_VBO_FREE_MEMORY_ATI, memInfo);
-				m_GPU.avail_VRAM = static_cast<float>(memInfo[0]) * BYTES_TO_KB;							// memInfo[0] returns the free VRAM in kB
+				m_GPU.avail_VRAM = static_cast<float>(memInfo[0]) * BYTES_TO_KB;								// memInfo[0] returns the free VRAM in kB
 			}
 		}
 	}
@@ -1376,29 +1371,30 @@ namespace PixelStudio
 	}
 
 
-	// ===================================================================================================================================================
-	// ----------------------------------------------------------  InspectionData Definitions  -----------------------------------------------------------
-	// ===================================================================================================================================================
+	// =======================================================================================================================================================================
+	// --------------------------------------------------------------------  InspectionData Definitions  ---------------------------------------------------------------------
+	// =======================================================================================================================================================================
 
 	/**
-	 * @brief
-	 * @param p
+	 * @brief Manages the `InspectionData` to take place by the "Harris Corner Detection" data
+	 * @param w width of the corresponding image
+	 * @param h height of the corresponding image
 	 */
 	void PixelStudioApp::InspectionData::setupHarris(int w, int h)
 	{
-		clear(); 																		// clear any `InspectionData` of the VRAM
+		clear(); 																								// clear any `InspectionData` of the VRAM
 		width  = w;
 		height = h;
 		stamp  = app.m_processor.getHarrisStamp();
 
-		// 1. Initial alle Keypoints vom Processor in das eigene Array kopieren
 		auto pts = app.m_processor.getKeypoints();
 		keypoints.assign(pts.begin(), pts.end());
 	}
 
 	/**
-	 * @brief
-	 * @param p
+	 * @brief Manages the `InspectionData` to take place by the "Scale Invariant Feature Transform (SIFT)" data
+	 * @param w width of the corresponding image
+	 * @param h height of the corresponding image
 	 */
 	void PixelStudioApp::InspectionData::setupSIFT(int w, int h)
 	{
@@ -1406,8 +1402,9 @@ namespace PixelStudio
 	}
 
 	/**
-	 * @brief
-	 * @param p
+	 * @brief Manages the `InspectionData` to take place by the "Speeded Up Robust Feature (SURF)" data
+	 * @param w width of the corresponding image
+	 * @param h height of the corresponding image
 	 */
 	void PixelStudioApp::InspectionData::setupSURF(int w, int h)
 	{
@@ -1415,7 +1412,7 @@ namespace PixelStudio
 	}
 
 	/**
-	 * @brief
+	 * @brief Clear any of the loaded textures of the VRAM
 	 */
 	void PixelStudioApp::InspectionData::clear()
 	{
@@ -1438,30 +1435,50 @@ namespace PixelStudio
 		stamp  = 0;
 	}
 
+	/**
+	 * @brief Gets or fetches the corrensopnding Ix (Sobel in X dir) of the underlaying image. Only at getting the first time the texture is upload to the VRAM.
+	 * @return GLuint texture ID
+	 */
 	GLuint PixelStudioApp::InspectionData::getOrFetchIx()
 	{
 		if (tex_Ix == 0) { tex_Ix = uploadSingleChannel(app.m_processor.get_Ix()); }
 		return tex_Ix;
 	}
 
+	/**
+	 * @brief Gets or fetches the corrensopnding Iy (Sobel in Y dir) of the underlaying image. Only at getting the first time the texture is upload to the VRAM.
+	 * @return GLuint texture ID
+	 */
 	GLuint PixelStudioApp::InspectionData::getOrFetchIy()
 	{
 		if (tex_Iy == 0) { tex_Iy = uploadSingleChannel(app.m_processor.get_Iy()); }
 		return tex_Iy;
 	}
 
+	/**
+	 * @brief Gets or fetches the corrensopnding Ixx (Ix.Ix * gaussian) of the underlaying image. Only at getting the first time the texture is upload to the VRAM.
+	 * @return GLuint texture ID
+	 */
 	GLuint PixelStudioApp::InspectionData::getOrFetchIxx()
 	{
 		if (texIxx == 0) { texIxx = uploadSingleChannel(app.m_processor.get_Ixx()); }
 		return texIxx;
 	}
 
+	/**
+	 * @brief Gets or fetches the corrensopnding Iyy (Iy.Iy * gaussian) of the underlaying image. Only at getting the first time the texture is upload to the VRAM.
+	 * @return GLuint texture ID
+	 */
 	GLuint PixelStudioApp::InspectionData::getOrFetchIyy()
 	{
 		if (texIyy == 0) { texIyy = uploadSingleChannel(app.m_processor.get_Iyy()); }
 		return texIyy;
 	}
 
+	/**
+	 * @brief Gets or fetches the corrensopnding Ixy (Ix.Iy * gaussian) of the underlaying image. Only at getting the first time the texture is upload to the VRAM.
+	 * @return GLuint texture ID
+	 */
 	GLuint PixelStudioApp::InspectionData::getOrFetchIxy()
 	{
 		if (texIxy == 0) { texIxy = uploadSingleChannel(app.m_processor.get_Ixy()); }
@@ -1469,8 +1486,8 @@ namespace PixelStudio
 	}
 
 	/**
-	 * @brief
-	 * @param threshold
+	 * @brief Updates the Harris Stevens R value based keypoints by the passed threshold
+	 * @param threshold the minimum threshold that must be exceeded to classify a pixel as a corner
 	 */
 	void PixelStudioApp::InspectionData::updateThreshold(Result& res, float threshold)
 	{
@@ -1479,11 +1496,9 @@ namespace PixelStudio
 	}
 
 	/**
-	 * @brief
-	 * @param data
-	 * @param w
-	 * @param h
-	 * @return
+	 * @brief Uploads a grayscale RGBA image using R32F by interpolating the Y channel.
+	 * @param data just the Y (intensity) channel of the corresponding data to ispect
+	 * @return GLuint texture ID
 	 */
 	GLuint PixelStudioApp::InspectionData::uploadSingleChannel(std::span<const float> data)
 	{
