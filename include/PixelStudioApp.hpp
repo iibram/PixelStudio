@@ -97,7 +97,7 @@ namespace PixelStudio
 			float alpha			= 1.00f;
 			float threshold		= 0.50f;
 			float harr_Sigma	= 1.00f;
-			float harr_kFac		= 0.04f;
+			float harr_kFac		= 0.05f;
 			float harr_Thresh	= 1.00f;
 			float harr_ColorHue = 0.00f;
 
@@ -173,7 +173,7 @@ namespace PixelStudio
 
 		ImageProcessor m_processor;											// the heavy lifting image processing instance
 		InspectionData m_inspectionData;									// all the inspection data (Harris, SIFT, SURF)
-		GPUInfo m_GPU;														//
+		GPUInfo m_GPU;														// GPU Info
 
 		std::vector<ImageTab> m_tabs;										// all images currently available in this session (consistent indices /w ImageProcessor)
 		std::string m_currPopupText;										// current shown popup text

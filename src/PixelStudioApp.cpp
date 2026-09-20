@@ -763,7 +763,6 @@ namespace PixelStudio
 					ImGui::SetNextItemWidth(rightDim.x);
 					ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, UI::Line);
 					ImGui::SliderFloat("##dot_color", &s.harr_ColorHue, 0.0f, 1.0f, "Color");
-					// ImGui::PopStyleVar();
 
 					// ------------------------------------------------------------------------------------
 					// 									Keypoints Control
@@ -776,8 +775,8 @@ namespace PixelStudio
 					ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
 
 					ImGui::PushFont(UI::InfoFont);
-					ImGui::InputText("##kpts_count",
-									 const_cast<char*>(std::format(std::locale(""), "{:>11L}", m_inspectionData.keypoints.size()).c_str()),
+					ImGui::InputText("##kpts_count", const_cast<char*>(std::format(std::locale(""), "{:>11L}",
+									 isInspectionActive ? m_inspectionData.keypoints.size() : 0).c_str()),
 									 12, ImGuiInputTextFlags_ReadOnly);
 					ImGui::PopFont();
 

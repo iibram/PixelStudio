@@ -95,10 +95,10 @@ Pixel Studio queries hardware topologies dynamically at initialization:
 
 | Pipeline Stage | Processing Time ($\Delta t$) | Description |
 | :--- | :--- | :--- |
-| **Sobel Gradient Pass** | `~55.2 ms` | Dual-axis gradient calculation ($I_x, I_y$) |
-| **Separable Gaussian (5x1D)** | `~141.8 ms` | Horizontal/Vertical smoothing pass ($I_{xx}, I_{yy}, I_{xy}$) |
-| **Keypoint Extraction (NMS)** | **`6.16 ms`** | Candidate filtering (**249,679 points @ $t=0.05$**) |
-| **Total Pipeline Rebuild** | **`~220 ms`** | Full end-to-end execution on 48MP input |
+| **Sobel Gradient Pass** | ` ~55.24 ms` (parallel) | Dual-axis gradient calculation ($I_x, I_y$) |
+| **Separable Gaussian (5x1D)** | `~141.88 ms` (parallel) | Horizontal/Vertical smoothing pass ($I_{xx}, I_{yy}, I_{xy}$) |
+| **Keypoint Extraction (NMS)** | ` ~12.08 ms` (parallel) | Candidate filtering (**249,679 points @ $t=0.05$**) |
+| **Total Pipeline Rebuild** | `~220 ms` (parallel) | Full end-to-end execution on 48MP input |
 
 ---
 

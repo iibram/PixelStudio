@@ -1427,15 +1427,19 @@ namespace PixelStudio
 				// ======================================================================================
 				auto calcSymmetricVal = [&](const std::vector<float>& src) -> float
 				{
-					float g0 = src[r0 + x0] + src[r0 + x4] + src[r4 + x0] + src[r4 + x4];						// Group 0: 4 corners (weight W0)
-					float g1 = src[r0 + x1] + src[r0 + x3] + src[r4 + x1] + src[r4 + x3]
-						+ src[r1 + x0] + src[r1 + x4] + src[r3 + x0] + src[r3 + x4];							// Group 1: 8 outer ring neighbors (weight W1)
-					float g2 = src[r0 + x2] + src[r4 + x2] + src[r2 + x0] + src[r2 + x4];						// Group 2: 4 outer axle ends (weight W2)
-					float g3 = src[r1 + x1] + src[r1 + x3] + src[r3 + x1] + src[r3 + x3];						// Group 3: 4 inner corners (weight W3)
-					float g4 = src[r1 + x2] + src[r3 + x2] + src[r2 + x1] + src[r2 + x3];						// Group 4: 4 inner axis neighbors (weight W4)
-					float g5 = src[r2 + x2];																	// Group 5: 1 center (weight W5)
+					// vcFormat-format off
+					// clang-format off
+					float g0 = (src[r0 + x0] + src[r0 + x4] + src[r4 + x0] + src[r4 + x4]);						// Group 0: 4 corners (weight W0)
+					float g1 = (src[r0 + x1] + src[r0 + x3] + src[r4 + x1] + src[r4 + x3]
+							  + src[r1 + x0] + src[r1 + x4] + src[r3 + x0] + src[r3 + x4]);						// Group 1: 8 outer ring neighbors (weight W1)
+					float g2 = (src[r0 + x2] + src[r4 + x2] + src[r2 + x0] + src[r2 + x4]);						// Group 2: 4 outer axle ends (weight W2)
+					float g3 = (src[r1 + x1] + src[r1 + x3] + src[r3 + x1] + src[r3 + x3]);						// Group 3: 4 inner corners (weight W3)
+					float g4 = (src[r1 + x2] + src[r3 + x2] + src[r2 + x1] + src[r2 + x3]);						// Group 4: 4 inner axis neighbors (weight W4)
+					float g5 = (src[r2 + x2]);																	// Group 5: 1 center (weight W5)
 
 					return (g0 * W0) + (g1 * W1) + (g2 * W2) + (g3 * W3) + (g4 * W4) + (g5 * W5);				// after ALL additions -> only 6 multiplications!
+					// clang-format on
+					// vcFormat-format on
 				};
 
 				float sumIxx = calcSymmetricVal(m_harris.Ixx);
