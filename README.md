@@ -76,12 +76,12 @@ Pixel Studio queries hardware topologies dynamically at initialization:
 | Vertical Gradient Matrix ($I_y$) | Architecture Feature Density ($I_{yy}$) |
 | :---: | :---: |
 | ![Sobel Iy Direction](res/showcases/sobelY.png) | ![Building Keypoint Density](res/showcases/gaussianYY.png) |
-| *Real-time $I_y$ spatial gradient visualization via OpenMP-accelerated Sobel convolution.* | *Stress-testing on complex real-world data ($3648 \times 2365$ px) detecting 7,400+ keypoints with custom color overlays.* |
+| Real-time $I_y$ spatial gradient visualization via OpenMP-accelerated Sobel convolution. | Stress-testing on complex real-world data ($3648 \times 2365$ px) detecting 7,400+ keypoints with custom color overlays. |
 
 ---
 
 ### 🎨 Bonus: Creative Pipeline Synthesis *(Optional)*
-*Demonstrating multi-stage execution—combining image inversion, color-space segmentation, and parallel feature extraction on a 30 MP landscape composition.*
+*Demonstrating multi-stage execution - combining image inversion, color-space segmentation, and parallel feature extraction on a 30 MP landscape composition.*
 
 ![Pipeline Synthesis](res/showcases/cascade.png)
 
@@ -116,7 +116,7 @@ Pixel Studio queries hardware topologies dynamically at initialization:
 * **Language Standard:** Modern C++23
 * **GUI Framework:** [Dear ImGui](https://github.com/ocornut/imgui) (by Omar Cornut) backed by [GLFW](https://www.glfw.org/)
 * **Image I/O:** [stb library](https://github.com/nothings/stb) (by Sean Barrett) for single-header loading/saving
-**Parallelization:** [OpenMP](https://www.openmp.org/) 5.0+ (Multi-threaded processing for all parallelizable image algorithms)
+* **Parallelization:** [OpenMP](https://www.openmp.org/) 5.0+ (Multi-threaded processing for all parallelizable image algorithms)
 * **Graphics API:** OpenGL 3.3+ (Core Profile)
 * **Target Platforms:** Windows 11 & Linux (CachyOS / Ubuntu)
 
