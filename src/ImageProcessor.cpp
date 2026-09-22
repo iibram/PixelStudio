@@ -113,7 +113,7 @@ namespace PixelStudio
 		m_bufferView.width = W;
 		m_bufferView.height = H;
 		m_bufferView.chanCode = m_images[m_IDX].chan;
-		m_bufferView.RGBA = std::span<const uint8_t>(m_RGBA.data(), SIZE);
+		m_bufferView.RGBA = std::span<const uint8_t>(m_RGBA.data(), (SIZE << 2));
 
 		m_W = static_cast<size_t> (W);																			// m_W and m_H are ONLY set by load | select ! (*)
 		m_H = static_cast<size_t> (H);
@@ -1148,7 +1148,7 @@ namespace PixelStudio
 		m_bufferView.width = m_images[m_IDX].w;
 		m_bufferView.height = m_images[m_IDX].h;
 		m_bufferView.chanCode = m_images[m_IDX].chan;
-		m_bufferView.RGBA = std::span<const uint8_t>(m_RGBA.data(), size);										// updating the RGBA buffer view
+		m_bufferView.RGBA = std::span<const uint8_t>(m_RGBA.data(), (size << 2));								// updating the RGBA buffer view
 
 		res.success = true;
 		return res;

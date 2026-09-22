@@ -6,7 +6,7 @@
 
 
 /**
- * @brief
+ * @brief This namespace supports `PixelStudioApp` by housing DPI scaled dimensions, custom UI components and the custom visual style of the GUI.
  */
 namespace PixelStudio::UI
 {
