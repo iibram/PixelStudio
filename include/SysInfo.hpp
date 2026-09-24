@@ -103,7 +103,7 @@ namespace PixelStudio
 		{
 			uint8_t logical_cores = std::thread::hardware_concurrency();
 
-			// ========================================= Windows =========================================
+			// ======================================== Windows ===========================================
 			#ifdef _WIN32
 			DWORD length = 0;
 			GetLogicalProcessorInformation(nullptr, &length);
@@ -121,7 +121,7 @@ namespace PixelStudio
 				}
 			}
 
-			// ========================================== Linux ==========================================
+			// ========================================= Linux ============================================
 			#elif defined(__linux__)
 			// Reads the number of physical cores from sysfs
 			std::ifstream cpuinfo("/sys/devices/system/cpu/cpu0/topology/core_cpus_list"); 							// is the target data available
@@ -134,7 +134,7 @@ namespace PixelStudio
 			}
 			#endif
 
-			// ================================== Fallback for both OS ===================================
+			// ================================= Fallback for both OS =====================================
 			return logical_cores > 2 ? (logical_cores >> 1) : 1; // assumtion: system has HT and SMT is active
 		}
 
@@ -154,7 +154,7 @@ namespace PixelStudio
 			uint16_t elements_per_cache_line = cache_line_size / struct_size_in_bytes;
 
 			// An optimal chunk must be a multiple of a cache line.
-			// A very recommended sweetspot is 64 = 2^6
+			// A very recommended sweetspot is 64 = 2^6 = 1 << 6
 			return (elements_per_cache_line << 6);
 		}
 
@@ -167,7 +167,7 @@ namespace PixelStudio
 		 */
 		inline fs::path loadFileDialog(const std::string& loadDir)
 		{
-			// ========================================= Windows =========================================
+			// ======================================== Windows ===========================================
 			#if defined(_WIN32)
 			char szFile[260] = {0};
 
@@ -189,28 +189,41 @@ namespace PixelStudio
 
 			return ""; 																								// abborted by the user
 
-			// ========================================== Linux ==========================================
+			// ========================================= Linux ============================================
 			#elif defined(__linux__)
 
 			char buffer[1024];
 			std::string result = "";
 
-			// calls zenity (GNOME/GTK). Returns the path via stdout.
-			FILE* pipe = popen("zenity --file-selection --title=\"open image\" --file-filter=\"images | *.png *.jpg *.bmp\"", "r");
+			std::string cmd = "zenity --file-selection --title=\"open image\"";										// construct Zenity command with starting directory
 
+			// pass the initial directory (loadDir) to Zenity
+			if (!loadDir.empty())
+			{
+				fs::path p(loadDir);
+				std::string pathStr = p.string();
+				if (!pathStr.empty() && pathStr.back() != '/' && pathStr.back() != '\\')
+					pathStr += "/";
+
+				cmd += " --filename=\"" + pathStr + "\"";
+			}
+
+			cmd += " --file-filter=\"images | *.png *.jpg *.bmp\" --file-filter=\"All Files | *\"";					// define filter formats
+
+			FILE* pipe = popen((cmd + " 2>/dev/null").c_str(), "r");
 			if (!pipe) return "";
 
 			if (fgets(buffer, sizeof(buffer), pipe) != NULL)
 			{
 				result = buffer;
 
-				if (!result.empty() && result.back() == '\n') 															// removes the line break (\n) at the end of the path
+				if (!result.empty() && result.back() == '\n')														// remove the line break (\n) at the end of the path
 					result.pop_back();
 			}
 			pclose(pipe);
 			return result;
 
-			// ===================================== Unknown System ======================================
+			// ==================================== Unknown System ========================================
 			#else
 			return "";
 			#endif
@@ -222,7 +235,7 @@ namespace PixelStudio
 		 */
 		inline fs::path saveFileDialog(const std::string& saveDir, const std::string& filename)
 		{
-			// ========================================= Windows =========================================
+			// ======================================== Windows ===========================================
 			#if defined(_WIN32)
 
 			char szFile[MAX_PATH] = {0};
@@ -260,18 +273,19 @@ namespace PixelStudio
 
 			return "";																									// abborted by the user
 
-			// ========================================== Linux ==========================================
+			// ========================================= Linux ============================================
 			#elif defined(__linux__)
 
 			fs::path fullInitialPath = fs::path(saveDir) / filename;
 
-			// construct the command string for Zenity (--filename sets the starting folder & the filename)
+			// construct the command string for Zenity
 			std::string cmd = "zenity --file-selection --save --confirm-overwrite "
 				"--title=\"Save Image As...\" "
 				"--filename=\"" + fullInitialPath.string() + "\" "
-				"--file-filter=\"Supported Images | *.png *.jpg *.jpeg *.bmp *.PNG *.JPG *.JPEG *.BMP\" "
-				"--file-filter=\"PNG Images | *.png *.PNG\" "
-				"--file-filter=\"JPEG Images | *.jpg *.jpeg *.JPG *.JPEG\" "
+				"--file-filter=\"All Supported Images | *.png *.jpg *.jpeg *.bmp *.PNG *.JPG *.JPEG *.BMP\" "
+				"--file-filter=\"PNG Image | *.png *.PNG\" "
+				"--file-filter=\"JPEG Image | *.jpg *.jpeg *.JPG *.JPEG\" "
+				"--file-filter=\"Bitmap | *.bmp *.BMP\" "
 				"--file-filter=\"All Files | *\" 2>/dev/null";
 
 			FILE* pipe = popen(cmd.c_str(), "r");
@@ -288,9 +302,25 @@ namespace PixelStudio
 					result.pop_back();
 			}
 			pclose(pipe);
+
+			if (result.empty())
+				return "";
+
+			// force a dynamic fallback for the file extension (corresponds to lpstrDefExt on Windows)
+			fs::path resPath(result);
+			if (!resPath.has_extension())
+			{
+				fs::path fnPath(filename);
+				std::string ext = fnPath.extension().string();
+				if (ext.empty()) ext = ".png";
+				if (ext.front() != '.') ext = "." + ext;
+
+				result += ext;
+			}
+
 			return result;
 
-			// ===================================== Unknown System ======================================
+			// ==================================== Unknown System ========================================
 			#else
 			return "";
 			#endif
@@ -306,7 +336,7 @@ namespace PixelStudio
 		{
 			res.success = true;																							// Assumtion: Dark Mode is active
 
-			// ========================================= Windows =========================================
+			// ======================================== Windows ===========================================
 			#if defined(_WIN32)
 
 			DWORD data = 0;
@@ -337,13 +367,13 @@ namespace PixelStudio
 			else
 				res.logs.push_back({TextCode::SYS_OS_Unknown_Dark_Mode, {}});											// fallback to Dark Mode
 
-			// ========================================== Linux ==========================================
+			// ========================================= Linux ============================================
 			#elif defined(__linux__)
 
-			char buffer[128];
+			char buffer[256];
 			std::string result = "";
 
-			// FreeDesktop XDG Portal query (KDE Plasma 6 / CachyOS & GNOME)
+			// primary method: FreeDesktop XDG Portal query (KDE Plasma 6 / CachyOS, GNOME, Wayland/X11)
 			FILE* pipe = popen(
 				"dbus-send --session --print-reply=literal --dest=org.freedesktop.portal.Desktop /org/freedesktop/portal/desktop "
 				"org.freedesktop.portal.Settings.Read string:'org.freedesktop.appearance' string:'color-scheme' 2>/dev/null", "r"
@@ -351,37 +381,48 @@ namespace PixelStudio
 
 			if (pipe)
 			{
-				if (fgets(buffer, sizeof(buffer), pipe) != NULL)
-				{
-					result = buffer;
-				}
+				if (fgets(buffer, sizeof(buffer), pipe) != NULL) { result = buffer; }
 				pclose(pipe);
 
 				// XDG Portal Standard: 1 = Prefer Dark, 2 = Prefer Light, 0 = No Preference
-				if (result.find("uint32 1") != std::string::npos) return true;											// Dark Mode active!
-				if (result.find("uint32 2") != std::string::npos) return false;											// Light Mode active!
+				if (result.find("uint32 1") != std::string::npos)
+				{
+					res.logs.push_back({TextCode::SYS_OS_Visual_Mode, {"Linux in Dark Mode"}});
+					return;
+				}
+				else if (result.find("uint32 2") != std::string::npos)
+				{
+					res.success = false;
+					res.logs.push_back({TextCode::SYS_OS_Visual_Mode, {"Linux in Light Mode"}});
+					return;
+				}
 			}
 
-			// fallback for GNOME / XFCE via gsettings
+			// secondary fallback: GNOME / XFCE / Legacy GTK via gsettings
 			pipe = popen("gsettings get org.gnome.desktop.interface color-scheme 2>/dev/null", "r");
 			if (pipe)
 			{
 				result = "";
-				if (fgets(buffer, sizeof(buffer), pipe) != NULL) result = buffer;
+				if (fgets(buffer, sizeof(buffer), pipe) != NULL) { result = buffer; }
 				pclose(pipe);
 
 				if (result.find("dark") != std::string::npos)
-					res.logs.push_back({TextCode::SYS_OS_Visual_Mode, {"Linux in Dark Mode"}});
-				else
 				{
-					res.success = true;
+					res.logs.push_back({TextCode::SYS_OS_Visual_Mode, {"Linux in Dark Mode"}});
+					return;
+				}
+				else if (result.find("light") != std::string::npos || result.find("default") != std::string::npos)
+				{
+					res.success = false;
 					res.logs.push_back({TextCode::SYS_OS_Visual_Mode, {"Linux in Light Mode"}});
+					return;
 				}
 			}
-			else
-				res.logs.push_back({TextCode::SYS_OS_Unknown_Dark_Mode, {}});											// fallback to Dark Mode
 
-			// ===================================== Unknown System ======================================
+			// ultimate fallback: If both queries fail
+			res.logs.push_back({TextCode::SYS_OS_Unknown_Dark_Mode, {}});												// fallback to Dark Mode
+
+			// ==================================== Unknown System ========================================
 			#else
 			res.logs.push_back({TextCode::SYS_OS_Unknown_Dark_Mode, {}});												// fallback to Dark Mode
 			#endif

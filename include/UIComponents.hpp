@@ -2,6 +2,7 @@
 
 #include <ImGui/imgui.h>
 #include <ImGui/imgui_internal.h>
+
 #include <cstdint>
 
 
@@ -10,9 +11,16 @@
  */
 namespace PixelStudio::UI
 {
-	inline constexpr const char* APP_TITLE = "Pixel Studio";								// app Name
+	#define APP_TITLE	"Pixel Studio"	// NOLINT(cppcoreguidelines-macro-usage)
+	#define APP_VERSION	"v0.2.0"		// NOLINT(cppcoreguidelines-macro-usage)
+
+	inline constexpr const char* APP_NAME		= APP_TITLE;								// app name
+	inline constexpr const char* APP_FULL_TITLE = APP_TITLE " " APP_VERSION;				// app name + version
+
 	inline constexpr float MIN_WIDTH  = 1280.0f;											// minimum WIDTH  of the app window (1080p displays)
 	inline constexpr float MIN_HEIGHT =  720.0f;											// minimum HEIGHT of the app window (1080p displays)
+
+	// --------------------------------------------------------------------------
 
 	inline static int SCALED_W = 0;															// DPI scaled WIDTH
 	inline static int SCALED_H = 0;															// DPI scaled HEIGHT

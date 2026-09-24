@@ -24,7 +24,7 @@
 ## ⚡ High-Impact Features & Architecture Highlights
 
 ### 🎯 1. O(1) Stamp-Based Validation & Invalidation System
-To prevent redundant computation across multi-stage image processing pipelines, PixelStudio incorporates an $O(1)$ **Stamp Verification Engine**:
+To prevent redundant computation across multi-stage image processing pipelines, Pixel Studio incorporates an $O(1)$ **Stamp Verification Engine**:
 * Answers pipeline questions instantly: *Does the active RGBA display vector match the selected image? Is the cached `padImg` based on the current image? Has Harris Detection executed on this exact dataset version?*
 * Eliminates buffer thrashing and invalidates downstream passes **only when parent parameters change**.
 
@@ -118,7 +118,7 @@ Pixel Studio queries hardware topologies dynamically at initialization:
 * **Image I/O:** [stb library](https://github.com/nothings/stb) (by Sean Barrett) for single-header loading/saving
 * **Parallelization:** [OpenMP](https://www.openmp.org/) 5.0+ (Multi-threaded processing for all parallelizable image algorithms)
 * **Graphics API:** OpenGL 3.3+ (Core Profile)
-* **Target Platforms:** Windows 11 & Linux (CachyOS / Ubuntu)
+* **Target Platforms:** Windows 11 & Linux (CachyOS / Arch / Ubuntu)
 
 ---
 
@@ -126,49 +126,90 @@ Pixel Studio queries hardware topologies dynamically at initialization:
 
 Pixel Studio relies on a clean, vendor-decoupled folder layout (`/include`, `/src`, `/external`). Pre-compiled static libraries and third-party headers reside within `/external`.
 
-#### 1. Prerequisites
-Ensure you have a modern C++23 compliant toolchain installed (e.g., **LLVM/Clang 16+** or **GCC 13+**).
+#### 1. Prerequisites & System Packages
 
-> **Note on OpenMP Support:**
-> While Pixel Studio automatically builds and runs in **serial fallback mode** if OpenMP is omitted, installing OpenMP support is strongly recommended to unleash full multi-threaded performance on multi-core CPUs.
+Ensure you have a modern C++23 compliant toolchain installed (**LLVM/Clang 16+** or **GCC 13+**).
 
-> **Note on Folder Structure & Default Paths:**
-> Pixel Studio relies on relative project paths upon initialization. Place your test input images inside the `defaultDIR/IN/` directory. Exported results target `defaultDIR/OUT/` by default unless overridden via the OS-native FileChooser.
+* **Linux (CachyOS / Arch):**
+	```bash
+	sudo pacman -S base-devel clang gcc glfw-x11 openmp zenity
+	```
+* **Linux (Ubuntu / Debian):**
+	```bash
+	sudo apt install build-essential clang g++ libglfw3-dev libomp-dev zenity
+	```
+* **Windows:**
 
-#### 2. Clone & Build (Windows / MSYS2 / Clang)
+	MSYS2 environment with clang / gcc, make, and Windows SDK headers.
+
+	> **Note on OpenMP Support:**
+	> While Pixel Studio automatically builds and runs in **serial fallback mode** if OpenMP is omitted, installing OpenMP support is strongly recommended to unleash full multi-threaded performance on multi-core CPUs.
+
+	> **Note on File System & Assets:**
+	> Pixel Studio relies on relative project paths upon initialization. Place your test input images inside the `defaultDIR/IN/` directory. Exported results target `defaultDIR/OUT/` by default unless overridden via the OS-native FileChooser.
+
+---
+
+#### 2. Building on Windows (MSYS2 / Clang / MinGW)
 
 ```bash
-# Clone the repository
+# Clone the repository & then change into project root
 git clone https://github.com/iibram/PixelStudio.git
-
-# Change into project root
 cd PixelStudio
 
-# Build third-party dependencies once (ImGui & GLAD)
+# 1. Compile third-party dependencies once (ImGui & GLAD)
 clang++ -std=c++23 -O3 -w -isystem "./external/include" -isystem "./external/include/ImGui" -c external/include/ImGui/*.cpp
 clang++ -O3 -w -isystem "./external/include" -c external/include/glad/glad.c
 
-# Move generated .o files to external/lib
+# Move generated objects to vendor lib folder
 mv *.o external/lib/
 
-# Unter Windows
-cmd: move *.o external\lib\
-
-# Compile Windows resources (Icon)
+# 2. Compile Windows Application Icon
 windres resources.rc -O coff -o icon.o
 
-# Compile release build with SIMD vectorization and system link flags
+# 3. Build Release Binary
 clang++ -std=c++23 -O3 -march=native -ffast-math \
-    -isystem "./external/include" \
-    -I"./include" \
-    src/*.cpp ./external/lib/*.o icon.o \
-    -L"./external/lib" \
-    -fopenmp -lomp -lglfw3 -lopengl32 -lgdi32 -limm32 -lcomdlg32 \
-    -o "./PixelStudio.exe"
+	-isystem "./external/include" \
+	-I"./include" src/*.cpp ./external/lib/*.o icon.o \
+	-L"./external/lib" -fopenmp -lomp -lglfw3 -lopengl32 -lgdi32 -limm32 -lcomdlg32 \
+	-o "./PixelStudio.exe"
 
-# Launch the engine
+# Launch Engine
 ./PixelStudio.exe
 ```
+
+---
+
+#### 3. Building on Linux (Clang or GCC)
+```bash
+# Clone the repository & then change into project root
+git clone https://github.com/iibram/PixelStudio.git
+cd PixelStudio
+
+# 1. Compile third-party dependencies once (ImGui & GLAD)
+clang++ -std=c++23 -O3 -w -isystem "./external/include" -isystem "./external/include/ImGui" -c external/include/ImGui/*.cpp
+clang++ -O3 -w -isystem "./external/include" -c external/include/glad/glad.c
+
+# Move generated objects to vendor lib folder
+mv *.o external/lib/
+
+# 2. Build Release Binary (using Clang or GCC)
+# Using Clang:
+clang++ -std=c++23 -O3 -march=native -ffast-math \
+    -isystem "./external/include" \
+    -I"./include" src/*.cpp ./external/lib/*.o \
+    -fopenmp -lglfw -lGL -ldl -lpthread -o "./PixelStudio"
+
+# Alternatively, using GCC:
+g++ -std=c++23 -O3 -march=native -ffast-math \
+	-isystem "./external/include" \
+	-I"./include" src/*.cpp ./external/lib/*.o \
+	-fopenmp -lglfw -lGL -ldl -lpthread -o "./PixelStudio"
+
+# Launch Engine
+./PixelStudio
+```
+
 ---
 
 ## 👤 Author & Project Status
@@ -177,7 +218,7 @@ clang++ -std=c++23 -O3 -march=native -ffast-math \
 * **Status:** Active Open-Source Project
 
 > **Development Note:**
-> PixelStudio is under active evolution. APIs, internal layout IDs, and pipeline methods may be refactored as new multi-scale algorithms (SIFT/SURF) and memory optimizations are integrated.
+> Pixel Studio is under active evolution. APIs, internal layout IDs, and pipeline methods may be refactored as new multi-scale algorithms (SIFT/SURF) and memory optimizations are integrated.
 
 ---
 

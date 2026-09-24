@@ -104,7 +104,7 @@ namespace PixelStudio
 		UI::SCALED_H = static_cast<int>(UI::MIN_HEIGHT * yScale);
 
 		glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);																// generate the window invisible
-		m_window = glfwCreateWindow(UI::SCALED_W, UI::SCALED_H, UI::APP_TITLE, nullptr, nullptr);
+		m_window = glfwCreateWindow(UI::SCALED_W, UI::SCALED_H, UI::APP_NAME, nullptr, nullptr);
 
 		if (!m_window)
 		{
@@ -482,14 +482,25 @@ namespace PixelStudio
 
 		// -------------------------------------------------------------------- Selector Area ------------------------------------------------------------------------
 
-		static SelectorSettings defaultSettings {};
-		auto& s = !m_tabs.empty() ? m_tabs[m_IDX].settings : defaultSettings;
-		const bool isInspectionActive = (m_inspectionData.stamp != 0 && m_inspectionData.stamp == m_tabs[m_IDX].stamp);
+		const bool hasTabs = !m_tabs.empty();
 
-		const GLuint texID	= !m_tabs.empty() ? m_tabs[m_IDX].texID : 0;
-		const GLuint texIx	= m_inspectionData.tex_Ix;
-		const GLuint texIy	= m_inspectionData.tex_Iy;
-		const GLuint texIxx = m_inspectionData.texIxx;
+		static SelectorSettings defaultSettings {};
+		auto& s = hasTabs ? m_tabs[m_IDX].settings : defaultSettings;
+
+		const bool isInspectionActive = hasTabs && (m_inspectionData.stamp != 0 && m_inspectionData.stamp == m_tabs[m_IDX].stamp);
+
+		const GLuint tex_Ix	= m_inspectionData.tex_Ix;
+		const GLuint tex_Iy	= m_inspectionData.tex_Iy;
+		const GLuint texIxx	= m_inspectionData.texIxx;
+		const GLuint texIyy	= m_inspectionData.texIyy;
+		const GLuint texIxy	= m_inspectionData.texIxy;
+
+		const GLuint origTexID = hasTabs ? m_tabs[m_IDX].texID : 0;
+		const bool isIxActive  = (tex_Ix != 0 && m_activeTexID == tex_Ix);
+		const bool isIyActive  = (tex_Iy != 0 && m_activeTexID == tex_Iy);
+		const bool isIxxActive = (texIxx != 0 && m_activeTexID == texIxx);
+		const bool isIyyActive = (texIyy != 0 && m_activeTexID == texIyy);
+		const bool isIxyActive = (texIxy != 0 && m_activeTexID == texIxy);
 
 
 		ImGuiWindowFlags noScrollbar = ImGuiWindowFlags_NoScrollbar;
@@ -719,13 +730,6 @@ namespace PixelStudio
 			// ====================================================================================================
 			if (ImGui::CollapsingHeader("Local Manipulations"))
 			{
-				const GLuint origTexID = m_tabs[m_IDX].texID;
-				const bool isIxActive  = (m_inspectionData.tex_Ix != 0 && m_activeTexID == m_inspectionData.tex_Ix);
-				const bool isIyActive  = (m_inspectionData.tex_Iy != 0 && m_activeTexID == m_inspectionData.tex_Iy);
-				const bool isIxxActive = (m_inspectionData.texIxx != 0 && m_activeTexID == m_inspectionData.texIxx);
-				const bool isIyyActive = (m_inspectionData.texIyy != 0 && m_activeTexID == m_inspectionData.texIyy);
-				const bool isIxyActive = (m_inspectionData.texIxy != 0 && m_activeTexID == m_inspectionData.texIxy);
-
 				float spacing  = ImGui::GetStyle().ItemSpacing.x;
 				float colWidth = std::floor((fullAvail_W - spacing) * 0.5f);
 				const ImVec2 leftDim = ImVec2(colWidth, 0.0f);
@@ -954,16 +958,18 @@ namespace PixelStudio
 					ImGui::Image((ImTextureID)(uintptr_t)m_activeTexID, finalSize);								// render the image
 
 					// -------------------------------- KEYPOINT OVERLAY PASS -----------------------------------
-					auto keypoints = m_inspectionData.getKeypoints();
+					//auto keypoints = m_inspectionData.getKeypoints();
 
-					if (m_inspectionData.stamp == tab.stamp && !keypoints.empty() && tab.settings.harr_Keypoints)
+					//if (m_inspectionData.stamp == tab.stamp && !keypoints.empty() && tab.settings.harr_Keypoints)
+					if (m_inspectionData.stamp == tab.stamp && !m_inspectionData.keypoints.empty() && tab.settings.harr_Keypoints)
 					{
 						ImDrawList* drawList = ImGui::GetWindowDrawList();
 						ImVec4 color   = UI::GetKeypointColor(tab.settings.harr_ColorHue);
 						ImU32 dotColor = ImGui::ColorConvertFloat4ToU32(color);
 						const float dotRadius = 2.5f;
 
-						for (const auto& kp : keypoints)
+						//for (const auto& kp : keypoints)
+						for (const auto& kp : m_inspectionData.keypoints)
 						{
 							// hit the pixel center: Add +0.5f to kp.x and kp.y before scaling
 							const float centerImageX = static_cast<float>(kp.x) + 0.5f;
@@ -1054,14 +1060,12 @@ namespace PixelStudio
 			// -------------------------------------------------------------------------------------
 			// right block: App version
 			// -------------------------------------------------------------------------------------
-			const char* versionText = "Pixel Studio v. 0.2";
-			float versionWidth = ImGui::CalcTextSize(versionText).x;
-
+			float versionWidth = ImGui::CalcTextSize(UI::APP_FULL_TITLE).x;
 			float targetX = ImGui::GetWindowWidth() - versionWidth;
 
 			// jump to the right border and set text
 			ImGui::SameLine(targetX); ImGui::SetCursorPosY(offsetY + UI::Line);
-			ImGui::Text("%s", versionText);
+			ImGui::Text("%s", UI::APP_FULL_TITLE);
 		}
 		ImGui::EndChild();
 		ImGui::PopStyleColor();
@@ -1288,7 +1292,17 @@ namespace PixelStudio
 		const GLubyte* rendererStr = glGetString(GL_RENDERER);
 
 		if (vendorStr)	 m_GPU.vendorStr   = reinterpret_cast<const char*>(vendorStr);
-		if (rendererStr) m_GPU.rendererStr = reinterpret_cast<const char*>(rendererStr);
+		if (rendererStr)
+		{
+			m_GPU.rendererStr = reinterpret_cast<const char*>(rendererStr);
+
+			size_t bracketPos = m_GPU.rendererStr.find('(');													// extract clean GPU name (cutting off Mesa/Linux additional infos)
+			if (bracketPos != std::string::npos)
+			{
+				m_GPU.rendererStr = m_GPU.rendererStr.substr(0, bracketPos);
+				m_GPU.rendererStr.erase(m_GPU.rendererStr.find_last_not_of(" \t") + 1);							// delete trailing spaces
+			}
+		}
 
 		// NVIDIA: Check initial free VRAM available for this app
 		if (m_GPU.vendorStr.find("NVIDIA") != std::string::npos)

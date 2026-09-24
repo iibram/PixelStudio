@@ -163,7 +163,7 @@ namespace PixelStudio
 
 			void updateThreshold(Result& res, float threshold);
 
-			[[nodiscard]] std::span<const Keypoint> getKeypoints() const noexcept { return keypoints; };
+			//[[nodiscard]] std::span<const Keypoint> getKeypoints() const noexcept { return keypoints; };
 
 		private:
 			// private helper for the OpneGL upload
