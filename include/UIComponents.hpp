@@ -32,6 +32,7 @@ namespace PixelStudio::UI
 	inline static ImFont* ScutFont = nullptr;												// shortcut font in MenuBar	(Roboto_Condensed-MediumItalic)
 	inline static ImFont* InfoFont = nullptr;												// used as monospaced font	(RobotoMono-Medium)
 
+	inline static float PathLen;															// DPI scaled (read-only) default path text length
 	inline static float Selector_W;															// DPI scaled width for the "Selector Area"
 	inline static float OpenLog_H;															// DPI scaled height for the performance logs (when open)
 	inline static float InfoBar_H;															// DPI scaled height for the info bar one liner
@@ -69,6 +70,7 @@ namespace PixelStudio::UI
 	 */
 	inline void scaleDimensions()
 	{
+		PathLen		= 28.000000f * em;									//  420.0
 		Selector_W	= 18.666666f * em;									//  280.0
 		SliderA_W	= 14.400000f * em;									//  216.0
 		SliderB_W	= 13.600000f * em;									//  204.0

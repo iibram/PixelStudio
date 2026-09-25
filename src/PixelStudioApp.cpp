@@ -25,7 +25,7 @@ namespace PixelStudio
 	{
 		// ---------------------------   S Y S T E M   ---------------------------
 		Result res;
-		SysInfo::checkDefaultOutDir(res);
+		SysInfo::loadAppConfig(res);
 		SysInfo::checkVisualMode(res);
 		SysInfo::performOpenMPDiagnosis(res);
 
@@ -194,7 +194,20 @@ namespace PixelStudio
 			m_themeChanged = false;
 		}
 
-		glfwWaitEvents();																						// (*): FPS only at actions (waiting barrier)
+		// ------------------------------------------------------------------------
+		// GLOBAL MODAL ANIMATION DETECTION:
+		// Reads the ImGui fade state universally for EVERY popup/modal in the app.
+		// As long as ImGui is fading (0.0 < Ratio < 1.0), bypass glfwWaitEvents()!
+		// ------------------------------------------------------------------------
+		if (GImGui)
+		{
+			float dimBgRatio   = GImGui->DimBgRatio;
+			m_isModalAnimating = (dimBgRatio > 0.0f && dimBgRatio < 1.0f);
+		}
+
+		if (!m_isModalAnimating)
+			glfwWaitEvents();																					// (*): FPS only at actions (waiting barrier)
+		// ------------------------------------------------------------------------
 
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
@@ -225,6 +238,7 @@ namespace PixelStudio
 
 		renderPopup();
 		renderMenuBar();
+		renderConfigModal();
 		renderCustomTabBar();
 		renderSelectors();
 		renderImageArea();
@@ -283,7 +297,7 @@ namespace PixelStudio
 		}
 		// ----------------------------------------------------------------------------
 
-		// dynamically clearing /w the current ImGui Theme
+		// dynamically clearing the background /w the custom ImGui theme
 		ImVec4 bg = ImGui::GetStyle().Colors[ImGuiCol_WindowBg];
 		glClearColor(bg.x, bg.y, bg.z, bg.w);
 		glClear(GL_COLOR_BUFFER_BIT);
@@ -322,7 +336,7 @@ namespace PixelStudio
 		// delete existing image textures
 		for (auto& tab : m_tabs)
 		{
-			if (tab.texID)
+			if (tab.texID != 0)
 			{
 				glDeleteTextures(1, &tab.texID);
 				tab.texID = 0;
@@ -351,34 +365,105 @@ namespace PixelStudio
 	{
 		// ------------------------------------------------------------------------ Popup ----------------------------------------------------------------------------
 
-		if (m_popupToShow)
+		if (!m_popupToShow) return;
+
+		std::string header = getAsString(m_header);
+		ImGui::OpenPopup(header.c_str());
+
+		// modal centering & rendering
+		ImVec2 center = ImGui::GetMainViewport()->GetCenter();
+		ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+
+		if (ImGui::BeginPopupModal(header.c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize))
 		{
-			std::string header = getAsString(m_header);
+			ImGui::PushFont(UI::InfoFont);
+			ImGui::TextUnformatted(m_currPopupText.c_str());
+			ImGui::PopFont();
 
-			ImGui::OpenPopup(header.c_str());
+			ImGui::Spacing();
+			ImGui::Separator();
+			ImGui::Spacing();
 
-			// modal centering & rendering
-			ImVec2 center = ImGui::GetMainViewport()->GetCenter();
-			ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
-
-			if (ImGui::BeginPopupModal(header.c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+			if (ImGui::Button(getAsString(m_footer).c_str(), ImVec2(-1.0f, 0.0f)))
 			{
-				ImGui::PushFont(UI::InfoFont);
-				ImGui::TextUnformatted(m_currPopupText.c_str());
-				ImGui::PopFont();
-
-				ImGui::Spacing();
-				ImGui::Separator();
-				ImGui::Spacing();
-
-				if (ImGui::Button(getAsString(m_footer).c_str(), ImVec2(-1.0f, 0.0f)))
-				{
-					m_popupToShow = false;
-					m_currPopupText.clear();
-					ImGui::CloseCurrentPopup();
-				}
-				ImGui::EndPopup();
+				m_popupToShow = false;
+				m_currPopupText.clear();
+				ImGui::CloseCurrentPopup();
 			}
+			ImGui::EndPopup();
+		}
+	}
+
+	/**
+	 * @brief
+	 */
+	void PixelStudioApp::renderConfigModal()
+	{
+		// -------------------------------------------------------------------- Config Modal -------------------------------------------------------------------------
+
+		if (!m_showConfigModal) return;
+
+		ImGui::SetNextWindowPos(ImVec2(8.0f, 30.0f), ImGuiCond_Appearing);										// position upper left under the MenuBar
+		const char* popupTitle = "Preferences / Paths";
+
+		ImGui::OpenPopup(popupTitle);
+
+		if (ImGui::BeginPopupModal(popupTitle, nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+		{
+			ImGui::TextUnformatted("Application Default Paths");
+			ImGui::Separator();
+			ImGui::Spacing();
+
+			// -------------------- DEFAULT LOAD PATH --------------------
+			std::string loadStr = PixelStudio::DEFAULT_LOAD_PATH.string();
+			ImGui::Text("Default Load Path:");
+
+			ImGui::SetNextItemWidth(UI::PathLen);
+			ImGui::InputText("##loadpath", &loadStr[0], loadStr.size(), ImGuiInputTextFlags_ReadOnly);
+			ImGui::SameLine();
+
+			if (ImGui::Button("Browse##load"))
+			{
+				fs::path selected = PixelStudio::SysInfo::selectFolderDialog("Select Default Load Directory");
+				if (!selected.empty() && fs::is_directory(selected))
+				{
+					PixelStudio::DEFAULT_LOAD_PATH = selected;
+					PixelStudio::SysInfo::saveAppConfig();
+				}
+			}
+
+			ImGui::Spacing();
+
+			// -------------------- DEFAULT SAVE PATH --------------------
+			std::string saveStr = PixelStudio::DEFAULT_SAVE_PATH.string();
+			ImGui::Text("Default Save Path:");
+
+			ImGui::SetNextItemWidth(UI::PathLen);
+			ImGui::InputText("##savepath", &saveStr[0], saveStr.size(), ImGuiInputTextFlags_ReadOnly);
+			ImGui::SameLine();
+
+			if (ImGui::Button("Browse##save"))
+			{
+				fs::path selected = PixelStudio::SysInfo::selectFolderDialog("Select Default Save Directory");
+				if (!selected.empty() && fs::is_directory(selected))
+				{
+					PixelStudio::DEFAULT_SAVE_PATH = selected;
+					PixelStudio::SysInfo::saveAppConfig();
+				}
+			}
+
+			ImGui::Spacing();
+			ImGui::Separator();
+			ImGui::Spacing();
+
+			// ------------------- FOOTER -------------------
+			if (ImGui::Button("Close", ImVec2(-1.0f, 0.0f)))
+			{
+				m_showConfigModal = false;
+				ImGui::CloseCurrentPopup();
+			}
+
+			ImGui::EndPopup();
 		}
 	}
 
@@ -406,9 +491,9 @@ namespace PixelStudio
 				ImGui::EndMenu();
 			}
 
-			if (ImGui::BeginMenu("Edit"))
+			if (ImGui::BeginMenu("Tools"))
 			{
-				if (UI::CustomMenuItem("Config")) { /* TODO */ }
+				if (UI::CustomMenuItem("Config")) { m_showConfigModal = true; }
 
 				ImGui::EndMenu();
 			}
@@ -422,7 +507,6 @@ namespace PixelStudio
 
 			// ---------------- integrated Theme Toggle Button (TTB) ------------------
 			if (UI::ThemeToggleButton(m_currTheme, m_nextTheme)) m_themeChanged = true;
-
 
 			ImGui::EndMenuBar();
 		}
@@ -504,8 +588,8 @@ namespace PixelStudio
 
 
 		ImGuiWindowFlags noScrollbar = ImGuiWindowFlags_NoScrollbar;
-		ImGuiSliderFlags noInput = ImGuiSliderFlags_NoInput;
-		ImGuiSliderFlags log	 = ImGuiSliderFlags_Logarithmic;
+		ImGuiSliderFlags noInput	 = ImGuiSliderFlags_NoInput;
+		ImGuiSliderFlags log		 = ImGuiSliderFlags_Logarithmic;
 
 		ImGui::BeginChild("SelectorPanel", ImVec2(UI::Selector_W, m_mainContentSize.y), true, noScrollbar);
 		{
@@ -518,7 +602,7 @@ namespace PixelStudio
 			const float fullAvail_W = ImGui::GetContentRegionAvail().x;
 
 			const ImVec2 fullBtnDim = ImVec2(fullAvail_W, 0.0f);
-			ImVec2 applyBtnDim;
+			ImVec2 applyBtnDim;																					// will be set by the first apply button (*)
 
 			// =============================================================================================================================================
 			// 														T O P   C O N T R O L   S E C T I O N
@@ -550,7 +634,7 @@ namespace PixelStudio
 					ImGui::PopStyleVar();
 
 					ImGui::SameLine();
-					applyBtnDim  = ImVec2(ImGui::GetContentRegionAvail().x, 0.0f);								// set applyBtnDim dynamically (right end)
+					applyBtnDim  = ImVec2(ImGui::GetContentRegionAvail().x, 0.0f);								// set applyBtnDim dynamically (right end) (*)
 
 					if (ImGui::Button("apply##AddIntensity", applyBtnDim))
 					{
@@ -733,6 +817,7 @@ namespace PixelStudio
 				float spacing  = ImGui::GetStyle().ItemSpacing.x;
 				float colWidth = std::floor((fullAvail_W - spacing) * 0.5f);
 				const ImVec2 leftDim = ImVec2(colWidth, 0.0f);
+				ImVec2 rightDim;																				// will be set by the first right inspection btn (*)
 
 				ImGui::Spacing();
 				ImGui::Separator();
@@ -751,7 +836,7 @@ namespace PixelStudio
 					if (UI::ToggleButton("Show Ix", isIxActive, leftDim))
 						m_activeTexID = isIxActive ? origTexID : m_inspectionData.getOrFetchIx();
 					ImGui::SameLine();
-					ImVec2 rightDim = ImVec2(ImGui::GetContentRegionAvail().x, 0.0f);							// set right inspection btn width dynamically
+					rightDim = ImVec2(ImGui::GetContentRegionAvail().x, 0.0f);									// set right inspection btn width dynamically (*)
 					if (UI::ToggleButton("Show Iy", isIyActive, rightDim))
 						m_activeTexID = isIyActive ? origTexID : m_inspectionData.getOrFetchIy();
 
@@ -802,7 +887,7 @@ namespace PixelStudio
 					if (isInspectionActive && ImGui::IsItemDeactivatedAfterEdit())
 					{
 						// complete Harris calculation when Harris active & k-factor slider moved !
-						m_activeTexID = m_tabs[m_IDX].texID;													// swap texID to original image
+						m_activeTexID = origTexID;																// swap texID to original image
 						Result res = m_processor.applyHarrisXY(s.harr_Sigma, s.harr_kFac, s.harr_Thresh);
 						setNextLog(res);
 
@@ -921,7 +1006,7 @@ namespace PixelStudio
 		if (ImGui::BeginChild("ImageRegion", m_mainContentSize, true, ImGuiWindowFlags_NoScrollbar))
 		{
 			if (m_tabs.empty())
-				ImGui::TextDisabled("No image loaded. Use 'File -> Load' to open an image.");
+				ImGui::TextDisabled("No image loaded. Use 'File -> Open' to open an image.");
 
 			else
 			{
@@ -957,18 +1042,15 @@ namespace PixelStudio
 
 					ImGui::Image((ImTextureID)(uintptr_t)m_activeTexID, finalSize);								// render the image
 
-					// -------------------------------- KEYPOINT OVERLAY PASS -----------------------------------
-					//auto keypoints = m_inspectionData.getKeypoints();
-
-					//if (m_inspectionData.stamp == tab.stamp && !keypoints.empty() && tab.settings.harr_Keypoints)
+					// ----------------------------------------- KEYPOINT OVERLAY PASS --------------------------------------------
 					if (m_inspectionData.stamp == tab.stamp && !m_inspectionData.keypoints.empty() && tab.settings.harr_Keypoints)
 					{
-						ImDrawList* drawList = ImGui::GetWindowDrawList();
-						ImVec4 color   = UI::GetKeypointColor(tab.settings.harr_ColorHue);
-						ImU32 dotColor = ImGui::ColorConvertFloat4ToU32(color);
-						const float dotRadius = 2.5f;
+						ImDrawList* drawList  = ImGui::GetWindowDrawList();
+						ImVec4 color		  = UI::GetKeypointColor(tab.settings.harr_ColorHue);
+						ImU32 dotColor		  = ImGui::ColorConvertFloat4ToU32(color);
 
-						//for (const auto& kp : keypoints)
+						const float halfBoxSize = 2.0f;															// half-size for a perfectly centered 4x4 pixel box
+
 						for (const auto& kp : m_inspectionData.keypoints)
 						{
 							// hit the pixel center: Add +0.5f to kp.x and kp.y before scaling
@@ -979,9 +1061,14 @@ namespace PixelStudio
 							const float screenX = imgStartPos.x + (centerImageX * imgScale);
 							const float screenY = imgStartPos.y + (centerImageY * imgScale);
 
-							drawList->AddCircleFilled(ImVec2(screenX, screenY), dotRadius, dotColor);
+							// Pixel-exact centered 4x4 bounding box around the subpixel center
+							drawList->AddRectFilled(
+								ImVec2(screenX - halfBoxSize, screenY - halfBoxSize),
+								ImVec2(screenX + halfBoxSize, screenY + halfBoxSize),
+								dotColor
+							);
 						}
-					}// -----------------------------------------------------------------------------------------
+					}// -----------------------------------------------------------------------------------------------------------
 				}
 			}
 		}

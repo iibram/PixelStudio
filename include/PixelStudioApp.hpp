@@ -61,8 +61,6 @@ namespace PixelStudio
 
 		inline static uint32_t g_tabID = 0;															// global tabID counter
 
-		inline static ImVec2 s_winDIM = ImVec2(0.0f, 0.0f);											// current dimension of the app windows
-
 		/**
 		 * @brief GPU vendor identier
 		 */
@@ -163,8 +161,6 @@ namespace PixelStudio
 
 			void updateThreshold(Result& res, float threshold);
 
-			//[[nodiscard]] std::span<const Keypoint> getKeypoints() const noexcept { return keypoints; };
-
 		private:
 			// private helper for the OpneGL upload
 			GLuint uploadSingleChannel(std::span<const float> data);
@@ -190,10 +186,12 @@ namespace PixelStudio
 
 		int m_IDX = -1;														// index of the current TAB
 
-		bool m_firstFrame	= true;											// is the first frame of ImGui shown? (stutter elimination at start)
-		bool m_popupToShow	= false;										// is there any pending popup ?
-		bool m_themeChanged = false;										// is there a pending theme change request?
-		bool m_isLogOpen	= false;										// is Performance Log open?
+		bool m_firstFrame		= true;										// is the first frame of ImGui shown? (stutter elimination at start)
+		bool m_popupToShow		= false;									// is there any pending popup?
+		bool m_showConfigModal	= false;									// is the Config Modal to show?
+		bool m_themeChanged		= false;									// is there a pending theme change request?
+		bool m_isLogOpen		= false;									// is Performance Log open?
+		bool m_isModalAnimating	= false;									// is the modal dimming currently running?
 
 		UI::ThemeMode m_currTheme = UI::ThemeMode::DARK;					// current selected theme mode
 		UI::ThemeMode m_nextTheme = UI::ThemeMode::DARK;					// next theme mode to switch to
@@ -209,6 +207,7 @@ namespace PixelStudio
 		void shutdown();
 
 		void renderPopup();
+		void renderConfigModal();
 		void renderMenuBar();
 		void renderCustomTabBar();
 		void renderSelectors();

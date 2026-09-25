@@ -2,6 +2,6 @@
 *.o
 *.code-workspace
 *.json
-*.ini
 .cache/
 .vscode/
+imgui.ini

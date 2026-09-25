@@ -171,7 +171,8 @@ windres resources.rc -O coff -o icon.o
 clang++ -std=c++23 -O3 -march=native -ffast-math \
 	-isystem "./external/include" \
 	-I"./include" src/*.cpp ./external/lib/*.o icon.o \
-	-L"./external/lib" -fopenmp -lomp -lglfw3 -lopengl32 -lgdi32 -limm32 -lcomdlg32 \
+	-L"./external/lib" \
+	-fopenmp -lomp -lglfw3 -lopengl32 -lgdi32 -limm32 -lcomdlg32 -lole32 -lshell32 \
 	-o "./PixelStudio.exe"
 
 # Launch Engine
