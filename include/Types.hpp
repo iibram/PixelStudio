@@ -20,6 +20,8 @@ namespace PixelStudio
 {
 	namespace fs = std::filesystem;																				// alias
 
+	const fs::path CONFIGS_PATH = fs::current_path() / "res" / "configs" / "config.ini";						// path to the config.ini file
+
 	static fs::path DEFAULT_LOAD_PATH = fs::current_path() / "default_DIR" / "IN";								// the default path to load images
 	static fs::path DEFAULT_SAVE_PATH = fs::current_path() / "default_DIR" / "OUT";								// the defualt path to save images
 
@@ -27,7 +29,7 @@ namespace PixelStudio
 	using LogArg = std::variant<int, double, std::string>;														// alias
 
 
-	// ======================================================== ImageProcessor originated shared types ===========================================================
+	// ============================================================= ImageProcessor originated shared types ==================================================================
 
 	/**
 	 * @brief Options during segmentations to modify the appearance of the back- and foreground
@@ -57,9 +59,9 @@ namespace PixelStudio
 		int chanCode = 0;
 	};
 
-	// -----------------------------------------------------------------------------------------------------------------------------------------------------------
-	// 																	F i l t e r   K e r n e l s
-	// -----------------------------------------------------------------------------------------------------------------------------------------------------------
+	// -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+	// 																		F i l t e r   K e r n e l s
+	// -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 	constexpr static float sobelX[9] =
 	{
 		-1.0f, 0.0f, 1.0f,
@@ -113,7 +115,7 @@ namespace PixelStudio
 	constexpr static Filter NEG_LOG	 = {negLog, 2};								// negative LoG (Marr-Hildreth detector, "Mexican hat")
 
 
-	// ==================================================================  TextCode System  ======================================================================
+	// =======================================================================  TextCode System  =============================================================================
 
 	/**
 	 * @brief Is holding the identifiers to the predefined constexpr log texts.

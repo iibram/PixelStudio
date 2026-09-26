@@ -403,7 +403,7 @@ namespace PixelStudio
 
 		if (!m_showConfigModal) return;
 
-		ImGui::SetNextWindowPos(ImVec2(8.0f, 30.0f), ImGuiCond_Appearing);										// position upper left under the MenuBar
+		ImGui::SetNextWindowPos(UI::ConfigPos, ImGuiCond_Appearing);											// position upper left under the MenuBar
 		const char* popupTitle = "Preferences / Paths";
 
 		ImGui::OpenPopup(popupTitle);

@@ -58,6 +58,14 @@ Pixel Studio queries hardware topologies dynamically at initialization:
 * **Non-Blocking Telemetry & Status Pipeline:** Implements a lightweight status-code, log, and metrics tracking system that channels internal warnings, file I/O states, and algorithm metrics directly into non-interfering UI toasts and status monitors.
 * **Guaranteed Control Flow:** Pipeline and asset failures (e.g., via C-style `stb` error status checks) are gracefully captured through explicit result propagation, ensuring zero thread stagnation and 100% deterministic execution under all conditions.
 
+### ⚡ 8. Dynamic Frame Pacing & Modal-Aware Event Loop
+
+PixelStudio combines power-efficiency with buttery-smooth UI animations through an adaptive event-driven render loop:
+
+* **Resource-Conscious Idle State:** When the user is idle, the application suspends redundant rendering frames via `glfwWaitEvents()`, dropping CPU/GPU usage to virtually 0%.
+* **Automatic Animation Bypass:** To prevent frame stuttering during modal interactions, popups, and dialog transitions, the engine continuously monitors `GImGui->DimBgRatio`.
+* **Seamless Pacing:** While any backdrop dimming or UI animation is active, the wait-event mechanism is dynamically bypassed to enforce smooth, real-time rendering. As soon as the modal closes and animations subside, the system immediately drops back into low-power idle mode.
+
 ---
 
 ## 🖼️ Interactive Showcase & Inspection Views

@@ -45,6 +45,7 @@ namespace PixelStudio::UI
 	inline static float Line;																// DPI scaled Line thickness
 	inline static float Line_X2;															// DPI scaled 2 Lines
 
+	inline static ImVec2 ConfigPos;															// DPI scaled start position of the config modal popup
 	inline static ImVec2 CheckVec2;															// DPI scaled distance and height for checkboxes
 	inline static ImVec2 TabDim;															// DPI scaled dimension for "Custom Tab Buttons"
 	inline static ImVec2 TabDimX2;															// DPI scaled 2 TabDim's
@@ -83,6 +84,7 @@ namespace PixelStudio::UI
 		Line_X2		=  0.133333f * em;									//    2.0
 		Line		=  0.066666f * em;									//    1.0
 
+		ConfigPos	= ImVec2(0.533333f * em, 2.000000f * em);			//    8.0, 30.0
 		TabDimX2	= ImVec2(1.200000f * em, 0.666666f * em);			//   18.0, 10.0
 		TabDim		= ImVec2(0.600000f * em, 0.333333f * em);			//    9.0,  5.0
 		Padding		= ImVec2(0.533333f * em, 0.266666f * em);			//    8.0,  4.0

@@ -3,7 +3,7 @@
 #include "Types.hpp"
 
 #include <system_error>
-#include <version>
+//#include <version>
 #include <fstream>
 #include <string>
 #include <thread>
@@ -13,12 +13,10 @@
 // OS specific
 #ifdef _WIN32
 #	include <windows.h>
-#	include <winnt.h>
 #	include <shlobj.h>
-//#	include <commdlg.h>
 #elif defined(__linux__)
 #	include <unistd.h>
-#	include <stdio.h>
+#	include <cstdio>
 #endif
 
 // OpenMP specific
@@ -44,18 +42,18 @@ namespace PixelStudio
 	 */
 	namespace SysInfo
 	{
-		// =============================================================== Default OUT Path Check ====================================================================
+		// ================================================================ Default DIR Dialog (config.ini) ==================================================================
 
 		/**
-		 * @brief Reads the `config.ini` file and sets the default input & output directories accordingly.
+		 * @brief Parses the `config.ini` file and looks for valid input and/or output paths. If such a path is found, the corresponding default directory is overwritten.
+		 * Paths that are not specified remain as general default paths (`default_DIR/IN` and/or `default_DIR/OUT`) to serve as fallbacks.
 		 * @param res `Result` {succes, logs}. A container within the information pipeline to which messages can be appended at the end
-		 * @param iniPath the default `config.ini` file path
 		 */
-		inline void loadAppConfig(Result& res, const fs::path& iniPath = "res/configs/config.ini")
+		inline void loadAppConfig(Result& res)
 		{
-			if (!fs::exists(iniPath)) return;
+			if (!fs::exists(CONFIGS_PATH)) return;
 
-			std::ifstream file(iniPath);
+			std::ifstream file(CONFIGS_PATH);
 			if (!file.is_open()) return;
 
 			// Encapsulatable trim lambda for left/right trim
@@ -89,17 +87,17 @@ namespace PixelStudio
 
 				// extract value string
 				std::string pathStr = line.substr(9);
-				trim(pathStr);																					// trim any whitespace after '=' or at the end of path
+				trim(pathStr);																						// trim any whitespace after '=' or at the end of path
 
 				if (pathStr.empty()) continue;
 
-				fs::path targetPath = fs::path(pathStr).make_preferred();										// enforce the OS format directly during parsing!
+				fs::path targetPath = fs::path(pathStr).make_preferred();											// enforce the OS format directly during parsing!
 				std::error_code ec;
 
-				if (!fs::exists(targetPath))																	// directory doesn't exist? -> create it
+				if (!fs::exists(targetPath))																		// directory doesn't exist? -> create it
 					fs::create_directories(targetPath, ec);
 
-				if (fs::is_directory(targetPath, ec))															// directory exist/created? -> set as DEFAULT PATHS
+				if (fs::is_directory(targetPath, ec))																// directory exist/created? -> set as DEFAULT PATHS
 				{
 					if (isLoad) DEFAULT_LOAD_PATH = targetPath;
 					if (isSave) DEFAULT_SAVE_PATH = targetPath;
@@ -107,7 +105,88 @@ namespace PixelStudio
 			}
 		}
 
-		// ================================================================== OpenMP Diagnosis =======================================================================
+		/**
+		 * @brief Launches the native folder selection dialog to allow for folder selection.
+		 * @param title title shown int input field of the selection dialog
+		 * @return a selected directory path or none
+		 */
+		inline fs::path selectFolderDialog(const std::string& title = "Select Directory")
+		{
+			// ======================================== Windows ===========================================
+			#if defined(_WIN32)
+			BROWSEINFOA bi = {0};
+			bi.lpszTitle = title.c_str();
+			bi.ulFlags = BIF_RETURNONLYFSDIRS | BIF_NEWDIALOGSTYLE;
+
+			LPITEMIDLIST pidl = SHBrowseForFolderA(&bi);
+			if (pidl != nullptr)
+			{
+				char path[MAX_PATH];
+				if (SHGetPathFromIDListA(pidl, path))
+				{
+					CoTaskMemFree(pidl);
+					return fs::path(path).make_preferred();
+				}
+				CoTaskMemFree(pidl);
+			}
+
+			// ========================================= Linux ============================================
+			#elif defined(__linux__)
+
+			// try zenity (GTK / GNOME standard)
+			std::string cmd = "zenity --file-selection --directory --title=\"" + title + "\" 2>/dev/null";
+			FILE* pipe = popen(cmd.c_str(), "r");
+			if (!pipe)
+			{
+				// fallback to kdialog (KDE / CachyOS standard)
+				cmd = "kdialog --getexistingdirectory --title \"" + title + "\" 2>/dev/null";
+				pipe = popen(cmd.c_str(), "r");
+			}
+
+			if (pipe)
+			{
+				char buffer[1024];
+				std::string result = "";
+				if (fgets(buffer, sizeof(buffer), pipe) != nullptr)
+				{
+					result = buffer;
+					result.erase(result.find_last_not_of("\r\n") + 1);												// remove trailing newline (\n)
+				}
+				pclose(pipe);
+
+				if (!result.empty())
+					return fs::path(result).make_preferred();
+			}
+			#endif
+
+			// ============================= Not selected / Unknown System ================================
+			return "";
+		}
+
+		/**
+		 * @brief When called, the `config.ini` file is written in full, including the current default paths.
+		 */
+		inline void saveAppConfig()
+		{
+			// ensures that the res/configs directory exists
+			if (CONFIGS_PATH.has_parent_path())
+			{
+				std::error_code ec;
+				fs::create_directories(CONFIGS_PATH.parent_path(), ec);
+			}
+
+			std::ofstream file(CONFIGS_PATH);
+			if (!file.is_open()) return;
+
+			file << "; =========================================================\n";
+			file << "; Pixel Studio Configuration File\n";
+			file << "; =========================================================\n\n";
+			file << "[Paths]\n";
+			file << "LoadPath=" << DEFAULT_LOAD_PATH.make_preferred().string() << "\n";
+			file << "SavePath=" << DEFAULT_SAVE_PATH.make_preferred().string() << "\n";
+		}
+
+		// ====================================================================== OpenMP Diagnosis ===========================================================================
 
 		/**
 		 * @brief Checks the running systems OpenMP status and appends these informations to the given container.
@@ -178,12 +257,12 @@ namespace PixelStudio
 			// ========================================= Linux ============================================
 			#elif defined(__linux__)
 			// Reads the number of physical cores from sysfs
-			std::ifstream cpuinfo("/sys/devices/system/cpu/cpu0/topology/core_cpus_list"); 						// is the target data available
+			std::ifstream cpuinfo("/sys/devices/system/cpu/cpu0/topology/core_cpus_list"); 							// is the target data available
 			if (cpuinfo.good())
 			{
-				std::ifstream smt("/sys/devices/system/cpu/smt/active"); 										// read if SMT is active or not
+				std::ifstream smt("/sys/devices/system/cpu/smt/active"); 											// read if SMT is active or not
 				char active;
-				if (smt >> active && active == '1') 															// writing smt >> active, and check if it is '1'
+				if (smt >> active && active == '1') 																// writing smt >> active, and check if it is '1'
 					return (logical_cores >> 1);
 			}
 			#endif
@@ -199,10 +278,10 @@ namespace PixelStudio
 		 */
 		inline uint16_t getChunkSize(uint8_t struct_size_in_bytes)
 		{
-			uint16_t cache_line_size = 64; 																		// setting the standard cache line size of 64 bytes
+			uint16_t cache_line_size = 64; 																			// setting the standard cache line size of 64 bytes
 
 			#ifdef __cpp_lib_hardware_interference_size
-			cache_line_size = std::hardware_destructive_interference_size; 										// setting the cache line size (if def. in compiling system)
+			cache_line_size = std::hardware_destructive_interference_size; 											// setting the cache line size (if def. in compiling system)
 			#endif
 
 			uint16_t elements_per_cache_line = cache_line_size / struct_size_in_bytes;
@@ -212,7 +291,7 @@ namespace PixelStudio
 			return (elements_per_cache_line << 6);
 		}
 
-		// ================================================================== Native File Dialog =====================================================================
+		// ====================================================================== Native File Dialog =========================================================================
 
 		/**
 		 * @brief Invokes the native open file dialog of the specific OS and applies various file filters.
@@ -229,7 +308,7 @@ namespace PixelStudio
 			ZeroMemory(&ofn, sizeof(ofn));
 
 			ofn.lStructSize = sizeof(ofn);
-			ofn.hwndOwner = GetActiveWindow();																	// linking with the app window
+			ofn.hwndOwner = GetActiveWindow();																		// linking with the app window
 			ofn.lpstrFile = szFile;
 			ofn.nMaxFile = sizeof(szFile);
 			ofn.nFilterIndex = 1;
@@ -241,7 +320,7 @@ namespace PixelStudio
 			if (GetOpenFileNameA(&ofn) == TRUE)
 				return ofn.lpstrFile;
 
-			return ""; 																							// abborted by the user
+			return ""; 																								// abborted by the user
 
 			// ========================================= Linux ============================================
 			#elif defined(__linux__)
@@ -249,7 +328,7 @@ namespace PixelStudio
 			char buffer[1024];
 			std::string result = "";
 
-			std::string cmd = "zenity --file-selection --title=\"open image\"";									// construct Zenity command with starting directory
+			std::string cmd = "zenity --file-selection --title=\"open image\"";										// construct Zenity command with starting directory
 
 			// pass the initial directory (loadDir) to Zenity
 			if (!loadDir.empty())
@@ -262,7 +341,7 @@ namespace PixelStudio
 				cmd += " --filename=\"" + pathStr + "\"";
 			}
 
-			cmd += " --file-filter=\"images | *.png *.jpg *.bmp\" --file-filter=\"All Files | *\"";				// define filter formats
+			cmd += " --file-filter=\"images | *.png *.jpg *.bmp\" --file-filter=\"All Files | *\"";					// define filter formats
 
 			FILE* pipe = popen((cmd + " 2>/dev/null").c_str(), "r");
 			if (!pipe) return "";
@@ -271,7 +350,7 @@ namespace PixelStudio
 			{
 				result = buffer;
 
-				if (!result.empty() && result.back() == '\n')													// remove the line break (\n) at the end of the path
+				if (!result.empty() && result.back() == '\n')														// remove the line break (\n) at the end of the path
 					result.pop_back();
 			}
 			pclose(pipe);
@@ -299,7 +378,7 @@ namespace PixelStudio
 			ZeroMemory(&ofn, sizeof(ofn));
 
 			ofn.lStructSize = sizeof(ofn);
-			ofn.hwndOwner = GetActiveWindow(); 																	// linking with the app window
+			ofn.hwndOwner = GetActiveWindow(); 																		// linking with the app window
 			ofn.lpstrFile = szFile;
 			ofn.nMaxFile = sizeof(szFile);
 			ofn.lpstrInitialDir = saveDir.empty() ? NULL : saveDir.c_str();
@@ -318,14 +397,14 @@ namespace PixelStudio
 			// extract the dynamic default extension based on the filename extension
 			fs::path fnPath(filename);
 			std::string ext = fnPath.extension().string();
-			if (!ext.empty() && ext.front() == '.') ext.erase(0, 1); 											// remove '.' => "png"
+			if (!ext.empty() && ext.front() == '.') ext.erase(0, 1); 												// remove '.' => "png"
 
 			ofn.lpstrDefExt = ext.empty() ? "png" : ext.c_str();
 
 			if (GetSaveFileNameA(&ofn) == TRUE)
 				return ofn.lpstrFile;
 
-			return "";																							// abborted by the user
+			return "";																								// abborted by the user
 
 			// ========================================= Linux ============================================
 			#elif defined(__linux__)
@@ -352,7 +431,7 @@ namespace PixelStudio
 			{
 				result = buffer;
 
-				if (!result.empty() && result.back() == '\n')													// remove the line break (\n) at the end of the path
+				if (!result.empty() && result.back() == '\n')														// remove the line break (\n) at the end of the path
 					result.pop_back();
 			}
 			pclose(pipe);
@@ -380,60 +459,7 @@ namespace PixelStudio
 			#endif
 		}
 
-		// ============================================================ Default DIR Dialog (config.ini) ==============================================================
-
-		/**
-		 * @brief
-		 * @param title
-		 * @return selected directory path
-		 */
-		inline fs::path selectFolderDialog(const std::string& title = "Select Directory")
-		{
-			#if defined(_WIN32)
-			BROWSEINFOA bi = {0};
-			bi.lpszTitle = title.c_str();
-			bi.ulFlags = BIF_RETURNONLYFSDIRS | BIF_NEWDIALOGSTYLE;
-
-			LPITEMIDLIST pidl = SHBrowseForFolderA(&bi);
-			if (pidl != nullptr)
-			{
-				char path[MAX_PATH];
-				if (SHGetPathFromIDListA(pidl, path))
-				{
-					CoTaskMemFree(pidl);
-					return fs::path(path).make_preferred();
-				}
-				CoTaskMemFree(pidl);
-			}
-			#endif
-			return "";
-		}
-
-		/**
-		 * @brief
-		 * @param iniPath
-		 */
-		inline void saveAppConfig(const fs::path& iniPath = "res/configs/config.ini")
-		{
-			// ensures that the res/configs directory exists
-			if (iniPath.has_parent_path())
-			{
-				std::error_code ec;
-				fs::create_directories(iniPath.parent_path(), ec);
-			}
-
-			std::ofstream file(iniPath);
-			if (!file.is_open()) return;
-
-			file << "; =========================================================\n";
-			file << "; Pixel Studio Configuration File\n";
-			file << "; =========================================================\n\n";
-			file << "[Paths]\n";
-			file << "LoadPath=" << DEFAULT_LOAD_PATH.make_preferred().string() << "\n";
-			file << "SavePath=" << DEFAULT_SAVE_PATH.make_preferred().string() << "\n";
-		}
-
-		// =================================================================== OS Visual Style =======================================================================
+		// ======================================================================= OS Visual Style ===========================================================================
 
 		/**
 		 * @brief Detects and returns the visual style of the specific OS.
@@ -441,7 +467,7 @@ namespace PixelStudio
 		 */
 		inline void checkVisualMode(Result &res)
 		{
-			res.success = true;																					// Assumtion: Dark Mode is active
+			res.success = true;																						// Assumtion: Dark Mode is active
 
 			// ======================================== Windows ===========================================
 			#if defined(_WIN32)
@@ -462,7 +488,7 @@ namespace PixelStudio
 
 			if (result == ERROR_SUCCESS)
 			{
-				if (data == 0)																					// when AppsUseLightTheme 0 -> Dark Mode is active!
+				if (data == 0)																						// when AppsUseLightTheme 0 -> Dark Mode is active!
 					res.logs.push_back({TextCode::SYS_OS_Visual_Mode, {"Windows in Dark Mode"}});
 				else
 				{
@@ -472,7 +498,7 @@ namespace PixelStudio
 
 			}
 			else
-				res.logs.push_back({TextCode::SYS_OS_Unknown_Dark_Mode, {}});									// fallback to Dark Mode
+				res.logs.push_back({TextCode::SYS_OS_Unknown_Dark_Mode, {}});										// fallback to Dark Mode
 
 			// ========================================= Linux ============================================
 			#elif defined(__linux__)
@@ -527,11 +553,11 @@ namespace PixelStudio
 			}
 
 			// ultimate fallback: If both queries fail
-			res.logs.push_back({TextCode::SYS_OS_Unknown_Dark_Mode, {}});											// fallback to Dark Mode
+			res.logs.push_back({TextCode::SYS_OS_Unknown_Dark_Mode, {}});												// fallback to Dark Mode
 
 			// ==================================== Unknown System ========================================
 			#else
-			res.logs.push_back({TextCode::SYS_OS_Unknown_Dark_Mode, {}});											// fallback to Dark Mode
+			res.logs.push_back({TextCode::SYS_OS_Unknown_Dark_Mode, {}});												// fallback to Dark Mode
 			#endif
 		}
 	}
