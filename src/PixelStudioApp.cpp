@@ -572,6 +572,7 @@ namespace PixelStudio
 		auto& s = hasTabs ? m_tabs[m_IDX].settings : defaultSettings;
 
 		const bool isInspectionActive = hasTabs && (m_inspectionData.stamp != 0 && m_inspectionData.stamp == m_tabs[m_IDX].stamp);
+		bool isManipulated = false;
 
 		const GLuint tex_Ix	= m_inspectionData.tex_Ix;
 		const GLuint tex_Iy	= m_inspectionData.tex_Iy;
@@ -638,6 +639,7 @@ namespace PixelStudio
 
 					if (ImGui::Button("apply##AddIntensity", applyBtnDim))
 					{
+						isManipulated = true;
 						Result res = m_processor.addIntensity(s.addIntensity);
 						setNextLog(res);
 						if (res.success)
@@ -657,6 +659,7 @@ namespace PixelStudio
 					ImGui::SameLine();
 					if (ImGui::Button("apply##ScaleIntensity", applyBtnDim))
 					{
+						isManipulated = true;
 						Result res = m_processor.scaleIntensity(s.sclIntensity);
 						setNextLog(res);
 						if (res.success)
@@ -676,6 +679,7 @@ namespace PixelStudio
 					ImGui::SameLine();
 					if (ImGui::Button("apply##Contrast", applyBtnDim))
 					{
+						isManipulated = true;
 						Result res = m_processor.setContrast(s.contrast);
 						setNextLog(res);
 						if (res.success)
@@ -696,6 +700,7 @@ namespace PixelStudio
 					ImGui::SameLine();
 					if (ImGui::Button("apply##Posterize", applyBtnDim))
 					{
+						isManipulated = true;
 						Result res = m_processor.posterize(s.exp);
 						setNextLog(res);
 						if (res.success)
@@ -715,6 +720,7 @@ namespace PixelStudio
 					ImGui::SameLine();
 					if (ImGui::Button("apply##SetAlpha", applyBtnDim))
 					{
+						isManipulated = true;
 						Result res = m_processor.setAlpha(s.alpha);
 						setNextLog(res);
 						if (res.success)
@@ -747,6 +753,7 @@ namespace PixelStudio
 					ImGui::SameLine();
 					if (ImGui::Button("apply##Segmentation", applyBtnDim))
 					{
+						isManipulated = true;
 						Result res;
 						res = m_processor.applySegmentation(s.threshold, res, segmType);
 						setNextLog(res);
@@ -774,6 +781,7 @@ namespace PixelStudio
 
 					if (ImGui::Button("apply Auto Segmentation", fullBtnDim))
 					{
+						isManipulated = true;
 						Result res = m_processor.applyAutoSegmentation(autoSegmType);
 						setNextLog(res);
 						if (res.success)
@@ -785,6 +793,7 @@ namespace PixelStudio
 				// -------------------------------------  NEGATIVE  ---------------------------------------
 				if (ImGui::Button("Invert (Negative)", fullBtnDim))
 				{
+					isManipulated = true;
 					Result res = m_processor.toNegative();
 					setNextLog(res);
 					if (res.success)
@@ -796,6 +805,7 @@ namespace PixelStudio
 				// -----------------------------------  AUTO HISTOGRAM  -----------------------------------
 				if (ImGui::Button("Auto Histogram Equalization", fullBtnDim))
 				{
+					isManipulated = true;
 					Result res = m_processor.applyHistogramEqualization();
 					setNextLog(res);
 					if (res.success)
@@ -803,6 +813,8 @@ namespace PixelStudio
 
 					ImGui::Spacing();
 				}
+
+				if (isInspectionActive && isManipulated) m_inspectionData.clear();
 			}
 
 			ImGui::Spacing();

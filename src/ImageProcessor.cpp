@@ -1453,9 +1453,12 @@ namespace PixelStudio
 				m_harris.R[curr_i] = det - k_factor * (trace * trace);								// R = det(M) - k * (trace(M))^2 ==> det(M) - k * (trace * trace)
 
 				// write back final smoothed tensor values
-				tmpIxx[curr_i] = sumIxx;
-				tmpIyy[curr_i] = sumIyy;
-				tmpIxy[curr_i] = sumIxy;
+				tmpIxx[curr_i] = std::clamp(sumIxx + 0.5f, 0.0f, 1.0f);
+				tmpIyy[curr_i] = std::clamp(sumIyy + 0.5f, 0.0f, 1.0f);
+				tmpIxy[curr_i] = std::clamp(sumIxy + 0.5f, 0.0f, 1.0f);
+				// tmpIxx[curr_i] = sumIxx;
+				// tmpIyy[curr_i] = sumIyy;
+				// tmpIxy[curr_i] = sumIxy;
 			}
 		}
 
@@ -1571,16 +1574,19 @@ namespace PixelStudio
 				m_harris.R[curr_i] = det - k_factor * (trace * trace);								// R = det(M) - k * (trace(M))^2 ==> det(M) - k * (trace * trace)
 
 				// write back final smoothed tensor values
-				m_harris.Ixx[curr_i] = sumIxx;
-				m_harris.Iyy[curr_i] = sumIyy;
-				m_harris.Ixy[curr_i] = sumIxy;
+				m_harris.Ixx[curr_i] = std::clamp(sumIxx + 0.5f, 0.0f, 1.0f);
+				m_harris.Iyy[curr_i] = std::clamp(sumIyy + 0.5f, 0.0f, 1.0f);
+				m_harris.Ixy[curr_i] = std::clamp(sumIxy + 0.5f, 0.0f, 1.0f);
+				// m_harris.Ixx[curr_i] = sumIxx;
+				// m_harris.Iyy[curr_i] = sumIyy;
+				// m_harris.Ixy[curr_i] = sumIxy;
 			}
 		}
 
-		// move the temporary result to the original buffers
-		m_harris.Ixx = std::move(tmpIxx);
-		m_harris.Iyy = std::move(tmpIyy);
-		m_harris.Ixy = std::move(tmpIxy);
+		// // move the temporary result to the original buffers
+		// m_harris.Ixx = std::move(tmpIxx);
+		// m_harris.Iyy = std::move(tmpIyy);
+		// m_harris.Ixy = std::move(tmpIxy);
 
 		m_ms = toMS(clock::now());
 
