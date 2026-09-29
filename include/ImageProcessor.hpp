@@ -34,47 +34,24 @@ namespace PixelStudio
 		 */
 		constexpr static size_t MP_16_THRESHOLD = 1ULL << 24;
 
-		// -----------------------------------------------------------------------------------------------------------------------------------------------
-		// 													Original YUV constants (YCbCr Model)
-		// -----------------------------------------------------------------------------------------------------------------------------------------------
-		constexpr static float k_R	 = 0.299f;									// YUV constant for the RGB R-channel
-		constexpr static float k_G	 = 0.587f;									// YUV constant for the RGB G-channel. k_G = 1 - (k_R + k_B)
-		constexpr static float k_B	 = 0.114f;									// YUV constant for the RGB B-channel
-
-		constexpr static float k_U	 = 0.500f;									// YUV constant for the color difference (blue, horizontal)
-		constexpr static float k_V	 = 0.500f;									// YUV constant for the color difference (red, vertical)
-
-		constexpr static float U_max = 0.564f;									// YUV constant for the max. value of U (horizontal)
-		constexpr static float V_max = 0.713f;									// YUV constant for the max. value of V (vertical)
-
-		// -----------------------------------------------------------------------------------------------------------------------------------------------
-		// 						Precomputed YUV constants to avoid runtime divisions (increases performance and efficiency)
-		// -----------------------------------------------------------------------------------------------------------------------------------------------
-		constexpr static float INV_255	 = 1.0f / 255.0f;						// pre divided constant
-
-		constexpr static float INV_k_R	 = 1.0f / (k_G + k_B);					// pre divided constant. (1 - k_R) = k_G + k_B
-		constexpr static float INV_k_B	 = 1.0f / (k_R + k_G);					// pre divided constant. (1 - k_B) = k_R + k_G
-		constexpr static float INV_k_G	 = 1.0f / k_G;							// pre divided constant
-
-		constexpr static float INV_U_max = 1.0f / U_max;						// pre divided constant
-		constexpr static float INV_V_max = 1.0f / V_max;						// pre divided constant
+		constexpr static float INV_255 = 1.0f / 255.0f;										// pre divided constant
 
 
 		/**
-		 * @brief Represents an image and its essential data in a SoA manner to radically speed up the YUVA dependent processes by AVX2/AVX-512.
-		 * @note The different `chan` values are used during the image processing as indicators of the state the alpha channel values.
+		 * @brief Represents an image and its essential data in a SoA manner to radically speed up the YCgCoA dependent processes by AVX2/AVX-512.
+		 * @note The different `chan` values are used during the image processing as indicators of the state of the Alpha channel values.
 		 * At saving the image (and selection of the user) the correct (3 or 4) value is passed to the "stb" library.
 		 */
 		struct Image
 		{
-			std::vector<float> Y;												// Y channel (overall Intensity) [0.0, 1.0]
-			std::vector<float> U;												// Difference between the B(lue) channel and the Y channel (horizontal) [-U_max, +U_max]
-			std::vector<float> V;												// Difference between the R(ed) channel and the Y channel (vertical) [-V_max, +V_max]
-			std::vector<float> A;												// Alpha channel (opacity) [0.0, 1.0]
-			uint32_t stamp = 0;
-			int w = 0;															// width of the image
-			int h = 0;															// height of the image
-			int chan = 0;														// channels of the image (internally -> 0: fully transparent, 3: fully opaque, 4: Alpha is valid)
+			std::vector<uint8_t> Y;												// Luminance			[0, 255]	-> overall Intensity
+			std::vector<int16_t> Cg;											// Chrominance (G)reen  [-255, 255] -> Cg = G - T (Green diff.)
+			std::vector<int16_t> Co;											// Chrominance (O)range [-255, 255] -> Co = R - B (Orange / Red-Blue diff.)
+			std::vector<uint8_t> A;												// Alpha channel		[0, 255]	-> opacity
+			uint32_t stamp = 0;													// unique stamp of the latest manipulation
+			int w		   = 0;													// width of the image
+			int h		   = 0;													// height of the image
+			int chan	   = 0;													// channels of the image (intern. -> 0: fully transparent, 3: fully opaque, 4: Alpha is valid)
 		};
 
 		/**
@@ -82,8 +59,8 @@ namespace PixelStudio
 		 */
 		struct Harris_Data
 		{
-			std::vector<float> Ix;												// Y * SobelX convolution of the image (horizontal)
-			std::vector<float> Iy;												// Y * SobelY convolution of the image (vertical)
+			std::vector<float> I_x;												// Y * SobelX convolution of the image (horizontal)
+			std::vector<float> I_y;												// Y * SobelY convolution of the image (vertical)
 			std::vector<float> Ixx;												// Ixx * Gauss
 			std::vector<float> Iyy;												// Iyy * Gauss
 			std::vector<float> Ixy;												// Ixy * Gauss
@@ -94,28 +71,28 @@ namespace PixelStudio
 
 
 		std::array<double, 256> m_CDF;											// temporary cumulative histogram of a selected image (percentage)
+		ImageBufferView m_bufferView;											// a view to the buffered RGBA and essential data (for the GUI)
 		Harris_Data m_harris;													// temporary "Harris-Setevens Detector" data
 		std::vector<Image> m_images;											// all images currently available in this session (consistent indices /w ImGui)
 		std::vector<uint8_t> m_RGBA;											// temp. RGBA data converted by toRGBA()
-		std::vector<float> m_padImg;											// padded image (according to the filter dimensions) to convolve /w  the filter
+		std::vector<uint8_t> m_padImg;											// padded image (according to the filter dimensions) to convolve /w  the filter
 		Filter m_def_Filter;													// user defined filter
-		ImageBufferView m_bufferView;											// a view to the buffered RGBA and essential data (for the GUI)
 
-		time_point m_t_start;													// start time
-		double m_ms = 0;														// duration in ms
+		time_point m_t_start;													// start time of any Δt measurement
+		double m_ms = 0;														// duration in ms of the current measurement
 
 		size_t m_W = 0;															// curr image width  (used a lot at padding)
 		size_t m_H = 0;															// curr image height (used a lot at padding)
 
-		int m_IDX = -1;															// current selected image index (images[IDX])
+		int m_IDX = -1;															// current selected image index (m_images[m_IDX])
 		uint32_t m_PADstamp	   = 0;												// curr padding belongs to which stamp
-		uint16_t m_CHUNK_SIZE  = 0xFFFF;										// optimal chunk size to run OpenMP loops (specific for the `Pixel` data structure)
+		uint16_t m_CHUNK_SIZE  = 0xFFFF;										// optimal chunk size to run OpenMP loops (specific for the used data structure)
 		uint8_t  m_MAX_THREADS = 0xFF;											// optimal thread num to run OpenMP loops (MAX_THREADS = physical core num)
-		uint8_t  m_fRad		   = 0xFF;											// the "radial" offset from the center to the vertical and horizontal borders of the filter
+		uint8_t  m_fRad		   = 0xFF;											// the "radius" of the current used filter
 
 
-		Result toYUVA(Result& res);												// RGBA -> YUVA
-		Result toRGBA(Result& res);												// YUVA -> RGBA
+		Result toYCgCoA(Result& res);											// RGBA -> YCgCoA
+		Result toRGBA(Result& res);												// RGBA <- YCgCoA
 		Result computeCDF(Result& res);											// CDF = Cumulative Distribution Function (W * H -> 256)
 		void setPadImg(Result& res, const Filter& filter);
 		Result computeSobelXY(Result& res);
@@ -200,13 +177,13 @@ namespace PixelStudio
 		 * @brief Returns the current `Harris_Stevens_Data` its `Ix` (horizontal convolution) luminance values at an interval of [0.0, 1.0] for displaying
 		 * @return `std::span<const float>` for a lightwieght quick access
 		 */
-		[[nodiscard]] std::span<const float> get_Ix() const noexcept { return m_harris.Ix; }
+		[[nodiscard]] std::span<const float> get_Ix() const noexcept { return m_harris.I_x; }
 
 		/**
 		 * @brief Returns the current `Harris_Stevens_Data` its `Iy` (vertical convolution) luminance values at an interval of [0.0, 1.0] for displaying
 		 * @return `std::span<const float>` for a lightwieght quick access
 		 */
-		[[nodiscard]] std::span<const float> get_Iy() const noexcept { return m_harris.Iy; }
+		[[nodiscard]] std::span<const float> get_Iy() const noexcept { return m_harris.I_y; }
 
 		/**
 		 * @brief Returns the current `Harris_Stevens_Data` its `Ixx` (Ix.Ix) luminance values at an interval of [0.0, 1.0] for displaying

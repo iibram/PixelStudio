@@ -58,7 +58,6 @@ namespace PixelStudio
 	}
 
 
-
 	// =======================================================================================================================================================================
 	// ======================================================================   P  R  I  V  A  T  E   ========================================================================
 	// =======================================================================================================================================================================
@@ -269,12 +268,12 @@ namespace PixelStudio
 		static int last_w = display_w;
 		static int last_h = display_h;
 
-		// lambda helper: Exact framebuffer size in MB
-		auto calcFramebufferVRAM = [](int w, int h) -> float {
-			constexpr float BYTES_PER_PIXEL = 8.0f;
-			constexpr float BUFFER_COUNT    = 2.0f; 															// Front & Back Buffer
-			return (static_cast<float>(w * h) * BYTES_PER_PIXEL * BUFFER_COUNT) * BYTES_TO_MB;
-		};
+		// // lambda helper: Exact framebuffer size in MB
+		// auto calcFramebufferVRAM = [](int w, int h) -> float {
+		// 	constexpr float BYTES_PER_PIXEL = 8.0f;
+		// 	constexpr float BUFFER_COUNT    = 2.0f; 															// Front & Back Buffer
+		// 	return (static_cast<float>(w * h) * BYTES_PER_PIXEL * BUFFER_COUNT) * BYTES_TO_MB;
+		// };
 
 		// from frame > 1 --> start calculating window resolution affect on VRAM usage
 		if (!m_firstFrame)
@@ -282,15 +281,14 @@ namespace PixelStudio
 			if (display_w != last_w || display_h != last_h)
 			{
 				// calculate exact VRAM usage for OLD and NEW size
-				float old_fb_vram = calcFramebufferVRAM(last_w, last_h);
-				float new_fb_vram = calcFramebufferVRAM(display_w, display_h);
+				float old_fb_vram = toMB(last_w, last_h, 16);													// 16 = 8 Bytes per pixel * 2 buffers (front & back buffer)
+				float new_fb_vram = toMB(display_w, display_h, 16);
 
-				// extract the delta
-				float vram_delta = new_fb_vram - old_fb_vram;
+				float vram_delta = new_fb_vram - old_fb_vram;													// extract the delta
 
-				// adjust VRAM budget
-				m_GPU.avail_VRAM -= vram_delta;
+				m_GPU.avail_VRAM -= vram_delta;																	// adjust VRAM budget
 
+				// set local statics
 				last_w = display_w;
 				last_h = display_h;
 			}
@@ -427,7 +425,7 @@ namespace PixelStudio
 				fs::path selected = PixelStudio::SysInfo::selectFolderDialog("Select Default Load Directory");
 				if (!selected.empty() && fs::is_directory(selected))
 				{
-					PixelStudio::DEFAULT_LOAD_PATH = selected;
+					PixelStudio::DEFAULT_LOAD_PATH = std::move(selected);
 					PixelStudio::SysInfo::saveAppConfig();
 				}
 			}
@@ -447,7 +445,7 @@ namespace PixelStudio
 				fs::path selected = PixelStudio::SysInfo::selectFolderDialog("Select Default Save Directory");
 				if (!selected.empty() && fs::is_directory(selected))
 				{
-					PixelStudio::DEFAULT_SAVE_PATH = selected;
+					PixelStudio::DEFAULT_SAVE_PATH = std::move(selected);
 					PixelStudio::SysInfo::saveAppConfig();
 				}
 			}
@@ -567,12 +565,12 @@ namespace PixelStudio
 		// -------------------------------------------------------------------- Selector Area ------------------------------------------------------------------------
 
 		const bool hasTabs = !m_tabs.empty();
+		m_isBufferUpdated  = false;
 
 		static SelectorSettings defaultSettings {};
 		auto& s = hasTabs ? m_tabs[m_IDX].settings : defaultSettings;
 
 		const bool isInspectionActive = hasTabs && (m_inspectionData.stamp != 0 && m_inspectionData.stamp == m_tabs[m_IDX].stamp);
-		bool isManipulated = false;
 
 		const GLuint tex_Ix	= m_inspectionData.tex_Ix;
 		const GLuint tex_Iy	= m_inspectionData.tex_Iy;
@@ -639,7 +637,6 @@ namespace PixelStudio
 
 					if (ImGui::Button("apply##AddIntensity", applyBtnDim))
 					{
-						isManipulated = true;
 						Result res = m_processor.addIntensity(s.addIntensity);
 						setNextLog(res);
 						if (res.success)
@@ -659,7 +656,6 @@ namespace PixelStudio
 					ImGui::SameLine();
 					if (ImGui::Button("apply##ScaleIntensity", applyBtnDim))
 					{
-						isManipulated = true;
 						Result res = m_processor.scaleIntensity(s.sclIntensity);
 						setNextLog(res);
 						if (res.success)
@@ -679,7 +675,6 @@ namespace PixelStudio
 					ImGui::SameLine();
 					if (ImGui::Button("apply##Contrast", applyBtnDim))
 					{
-						isManipulated = true;
 						Result res = m_processor.setContrast(s.contrast);
 						setNextLog(res);
 						if (res.success)
@@ -700,7 +695,6 @@ namespace PixelStudio
 					ImGui::SameLine();
 					if (ImGui::Button("apply##Posterize", applyBtnDim))
 					{
-						isManipulated = true;
 						Result res = m_processor.posterize(s.exp);
 						setNextLog(res);
 						if (res.success)
@@ -720,7 +714,6 @@ namespace PixelStudio
 					ImGui::SameLine();
 					if (ImGui::Button("apply##SetAlpha", applyBtnDim))
 					{
-						isManipulated = true;
 						Result res = m_processor.setAlpha(s.alpha);
 						setNextLog(res);
 						if (res.success)
@@ -753,12 +746,14 @@ namespace PixelStudio
 					ImGui::SameLine();
 					if (ImGui::Button("apply##Segmentation", applyBtnDim))
 					{
-						isManipulated = true;
 						Result res;
 						res = m_processor.applySegmentation(s.threshold, res, segmType);
 						setNextLog(res);
 						if (res.success)
+						{
 							updateBuffer(m_processor.getImageBufferView());
+							setAlphaSetting();
+						}
 					}
 					ImGui::Spacing();
 				}
@@ -781,11 +776,13 @@ namespace PixelStudio
 
 					if (ImGui::Button("apply Auto Segmentation", fullBtnDim))
 					{
-						isManipulated = true;
 						Result res = m_processor.applyAutoSegmentation(autoSegmType);
 						setNextLog(res);
 						if (res.success)
+						{
 							updateBuffer(m_processor.getImageBufferView());
+							setAlphaSetting();
+						}
 					}
 					ImGui::Spacing();
 				}
@@ -793,7 +790,6 @@ namespace PixelStudio
 				// -------------------------------------  NEGATIVE  ---------------------------------------
 				if (ImGui::Button("Invert (Negative)", fullBtnDim))
 				{
-					isManipulated = true;
 					Result res = m_processor.toNegative();
 					setNextLog(res);
 					if (res.success)
@@ -805,7 +801,6 @@ namespace PixelStudio
 				// -----------------------------------  AUTO HISTOGRAM  -----------------------------------
 				if (ImGui::Button("Auto Histogram Equalization", fullBtnDim))
 				{
-					isManipulated = true;
 					Result res = m_processor.applyHistogramEqualization();
 					setNextLog(res);
 					if (res.success)
@@ -814,7 +809,7 @@ namespace PixelStudio
 					ImGui::Spacing();
 				}
 
-				if (isInspectionActive && isManipulated) m_inspectionData.clear();
+				if (isInspectionActive && m_isBufferUpdated) m_inspectionData.clear();
 			}
 
 			ImGui::Spacing();
@@ -1110,7 +1105,8 @@ namespace PixelStudio
 			{
 				ImageTab& tab = m_tabs[m_IDX];
 				int channels = (tab.chanCode == 3) ? 3 : 4;
-				float sizeMB = static_cast<float>(tab.width * tab.height * channels) * BYTES_TO_MB;
+				float sizeMB = toMB(tab.width, tab.height, channels);
+				//float sizeMB = static_cast<float>(tab.width * tab.height * channels) * BYTES_TO_MB;
 
 				// left block: image meta data
 				ImGui::TextDisabled("File: %s  |  %d x %d px  |  RGBA (%d-Bit)  |  %.2f MB (uncompressed) |",
@@ -1202,19 +1198,14 @@ namespace PixelStudio
 					.stamp	  = buffer.stamp,
 					.width	  = buffer.width,
 					.height	  = buffer.height,
-					.chanCode = buffer.chanCode});
+					.chanCode = buffer.chan});
 
 				m_IDX = static_cast<int>(m_tabs.size()) - 1;
 
 				setTextureID(m_tabs[m_IDX], buffer);
 				m_activeTexID = m_tabs[m_IDX].texID;
 
-				if (buffer.chanCode == 0)
-					m_tabs[m_IDX].settings.alpha = 0.0f;
-				else if (buffer.chanCode == 3)
-					m_tabs[m_IDX].settings.alpha = 1.0f;
-				else
-					m_tabs[m_IDX].settings.alpha = 0.5f;
+				setAlphaSetting();
 
 				updateAvailVRAM(VRAM::ALLOC, buffer.width, buffer.height);
 
@@ -1246,7 +1237,7 @@ namespace PixelStudio
 		setNextLog(res);
 
 		if (res.success)
-			m_tabs[m_IDX].dstPath = selectedPath;
+			m_tabs[m_IDX].dstPath = std::move(selectedPath);
 		else
 			setNextPopup(res, TextCode::ErrMsg_Header, TextCode::ErrMsg_Footer);
 	}
@@ -1339,7 +1330,7 @@ namespace PixelStudio
 			m_tabs[m_IDX].stamp = buff.stamp;
 			m_tabs[m_IDX].width = buff.width;
 			m_tabs[m_IDX].height = buff.height;
-			m_tabs[m_IDX].chanCode = buff.chanCode;
+			m_tabs[m_IDX].chanCode = buff.chan;
 
 			glBindTexture(GL_TEXTURE_2D, m_tabs[m_IDX].texID);
 
@@ -1347,7 +1338,8 @@ namespace PixelStudio
 			glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, buff.width, buff.height, GL_RGBA, GL_UNSIGNED_BYTE, buff.RGBA.data());
 			glBindTexture(GL_TEXTURE_2D, 0);
 
-			m_activeTexID = m_tabs[m_IDX].texID;
+			m_activeTexID	  = m_tabs[m_IDX].texID;
+			m_isBufferUpdated = true;
 		}
 	}
 
@@ -1380,6 +1372,22 @@ namespace PixelStudio
 		m_footer = footer;
 
 		m_popupToShow = true;
+	}
+
+	/**
+	 * @brief Sets the alpha value setting of the active image according to its current chan code
+	 * @param chan the chan code of the image (provided by the ImageBufferView durig texture load/update)
+	 */
+	void PixelStudioApp::setAlphaSetting()
+	{
+		ImageTab& tab = m_tabs[m_IDX];
+
+		if (tab.chanCode == 0)
+			tab.settings.alpha = 0.0f;
+		else if (tab.chanCode == 3)
+			tab.settings.alpha = 1.0f;
+		else
+			tab.settings.alpha = 0.5f;
 	}
 
 	/**
@@ -1441,14 +1449,14 @@ namespace PixelStudio
 		// perform manual calculations instead of simply using the OpenGL API
 		if (access_mode == VRAM::ALLOC)
 		{
-			float amount = toMB(w, h);
+			float amount = toMB(w, h, 4);																		// always 4 channel images on VRAM
 			m_GPU.used_VRAM  += amount;
 			m_GPU.avail_VRAM -= amount;
 		}
 
 		else if (access_mode == VRAM::DEALLOC)
 		{
-			float amount	  = toMB(w, h);
+			float amount	  = toMB(w, h, 4);																	// always 4 channel images on VRAM
 			m_GPU.used_VRAM  -= amount;
 			m_GPU.avail_VRAM += amount;
 		}
@@ -1475,11 +1483,13 @@ namespace PixelStudio
 	 * @brief Calculates and returns the corresponding size in Megabytes of the given parameters.
 	 * @param w the width of the image
 	 * @param h the height of the image
+	 * @param factor channels or other precalculated factor for the final calculation
 	 * @return the calculated Megabytes as a `float` value
 	 */
-	constexpr float PixelStudioApp::toMB(const int w, const int h) noexcept
+	constexpr float PixelStudioApp::toMB(const int w, const int h, int factor) noexcept
 	{
-		return static_cast<float>(static_cast<size_t>(w * h) << 2) * BYTES_TO_MB;
+		return static_cast<float>(w * h * factor) * BYTES_TO_MB;
+		//return static_cast<float>(static_cast<size_t>(w * h) << 2) * BYTES_TO_MB;
 	}
 
 

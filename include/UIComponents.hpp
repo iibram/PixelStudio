@@ -11,8 +11,10 @@
  */
 namespace PixelStudio::UI
 {
-	#define APP_TITLE	"Pixel Studio"	// NOLINT(cppcoreguidelines-macro-usage)
-	#define APP_VERSION	"v0.2.0"		// NOLINT(cppcoreguidelines-macro-usage)
+	// NOLINTBEGIN(cppcoreguidelines-macro-usage)
+	#define APP_TITLE	"Pixel Studio"
+	#define APP_VERSION	"v0.2.0"
+	// NOLINTEND(cppcoreguidelines-macro-usage)
 
 	inline constexpr const char* APP_NAME		= APP_TITLE;								// app name
 	inline constexpr const char* APP_FULL_TITLE = APP_TITLE " " APP_VERSION;				// app name + version
@@ -45,6 +47,9 @@ namespace PixelStudio::UI
 	inline static float Line;																// DPI scaled Line thickness
 	inline static float Line_X2;															// DPI scaled 2 Lines
 
+	// NOLINTBEGIN(bugprone-throwing-static-initialization)
+	// static UI/Layout vectors initialized safely before main loop execution,
+	// right after DPI of the running system is determined and UI::em is set.
 	inline static ImVec2 ConfigPos;															// DPI scaled start position of the config modal popup
 	inline static ImVec2 CheckVec2;															// DPI scaled distance and height for checkboxes
 	inline static ImVec2 TabDim;															// DPI scaled dimension for "Custom Tab Buttons"
@@ -55,6 +60,7 @@ namespace PixelStudio::UI
 	inline static ImVec4 VRAM_GOOD;															// app is using VRAM  < 50% (ThemeMode specific)
 	inline static ImVec4 VRAM_WARN;															// app is using VRAM  < 80% (ThemeMode specific)
 	inline static ImVec4 VRAM_ALERT;														// app is using VRAM >= 80% (ThemeMode specific)
+	// NOLINTEND(bugprone-throwing-static-initialization)
 
 	inline constexpr ImColor CloseRED_X		= ImColor(220, 60, 60, 255);					// TAB close button color
 	inline constexpr ImVec4 TransparentVec4 = ImVec4(0.0f, 0.0f, 0.0f, 0.0f);				// Transparent ImVec4

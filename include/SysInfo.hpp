@@ -10,7 +10,9 @@
 #include <vector>
 #include <new>
 
-// OS specific
+// -------------------------------------------------
+// 					  OS specific
+// -------------------------------------------------
 #ifdef _WIN32
 #	include <windows.h>
 #	include <shlobj.h>
@@ -19,18 +21,23 @@
 #	include <cstdio>
 #endif
 
-// OpenMP specific
+// -------------------------------------------------
+// 					OpenMP specific
+// -------------------------------------------------
+// NOLINTBEGIN(cppcoreguidelines-macro-usage)
 #if defined(__has_include) && __has_include(<omp.h>)
 #	include <omp.h>
 #	if defined(_OPENMP)
-#		define PARALLEL_RUN			// omp.h ✅, -fopenmp ✅
+#		define PARALLEL_RUN										// omp.h ✅, -fopenmp ✅
 #		define VERSION _OPENMP
 #	else
-#		define OMP_STATUS_CODE 1	// omp.h ✅, -fopenmp ⛔
+#		define OMP_STATUS_CODE 1								// omp.h ✅, -fopenmp ⛔
 #	endif
 #else
-#	define OMP_STATUS_CODE 0		// omp.h ⛔, -fopenmp ⛔
+#	define OMP_STATUS_CODE 0									// omp.h ⛔, -fopenmp ⛔
 #endif
+// NOLINTEND(cppcoreguidelines-macro-usage)
+
 
 
 namespace PixelStudio

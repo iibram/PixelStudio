@@ -20,10 +20,14 @@ namespace PixelStudio
 {
 	namespace fs = std::filesystem;																				// alias
 
+	// NOLINTBEGIN(bugprone-throwing-static-initialization)
+	// static paths initialized safely at app initalization.
+	// The DEFAULT paths are depending on the config.ini parsing results.
 	const fs::path CONFIGS_PATH = fs::current_path() / "res" / "configs" / "config.ini";						// path to the config.ini file
 
 	static fs::path DEFAULT_LOAD_PATH = fs::current_path() / "default_DIR" / "IN";								// the default path to load images
 	static fs::path DEFAULT_SAVE_PATH = fs::current_path() / "default_DIR" / "OUT";								// the defualt path to save images
+	// NOLINTEND(bugprone-throwing-static-initialization)
 
 	using duration = std::chrono::duration<double, std::milli>;													// alias
 	using LogArg = std::variant<int, double, std::string>;														// alias
@@ -54,9 +58,9 @@ namespace PixelStudio
 	{
 		std::span<const uint8_t> RGBA;
 		uint32_t stamp = 0;
-		int width = 0;
-		int height = 0;
-		int chanCode = 0;
+		int width	   = 0;
+		int height	   = 0;
+		int chan	   = 0;
 	};
 
 	// -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -274,21 +278,21 @@ namespace PixelStudio
 
 	/**
 	 * @brief Helper to get the identified text comfortable
-	 * @param code `TextCode` enum unit8_t 0 to 45
+	 * @param code `TextCode` enum unit8_t 0 to 51
 	 * @return the identified text as a `std::string_view`.
 	 */
 	constexpr std::string_view getText(TextCode code) { return STATUS_TEXTS[static_cast<uint8_t>(code)]; }
 
 	/**
 	 * @brief Helper to get the identified text comfortable and directly as string
-	 * @param code `TextCode` enum unit8_t 0 to 45
+	 * @param code `TextCode` enum unit8_t 0 to 51
 	 * @return the identified text as a `std::string`.
 	 */
 	constexpr std::string getAsString(TextCode code) { return static_cast<std::string>(getText(code)); }
 
 	/**
 	 * @brief Helper to format the passed args accordingly to the identified text by the `TextCode` enum.
-	 * @param code `TextCode` enum unit8_t 0 to 45
+	 * @param code `TextCode` enum unit8_t 0 to 51
 	 * @param args alias `LogArg` -> a variant of int, double or string
 	 * @return the proper formatted text resulting by the `TextCode` and the parameters
 	 */

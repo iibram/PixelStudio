@@ -52,7 +52,7 @@ namespace PixelStudio
 
 	/**
 	 * @brief Loads the image file from the specified path and reports the success status. When successfully, the RGBA of the image are stored at `RGBA`, are converted to
-	 * the YUVA SoA structure, and the image is pushed to the `m_images` vector.
+	 * the YCgCoA SoA structure, and the image is pushed to the `m_images` vector.
 	 * @param ID the unique ID of the image
 	 * @param loadPath the image file to load from
 	 * @return `Result` {success, logs}
@@ -62,18 +62,18 @@ namespace PixelStudio
 		int W = 0, H = 0, channels = 0;
 
 		m_t_start = clock::now();
-		uint8_t* stb_data = stbi_load(loadPath.string().c_str(), &W, &H, &channels, 4);							// req_comp = 4 -> all m_images with alpha channel
+		uint8_t* stb_data = stbi_load(loadPath.string().c_str(), &W, &H, &channels, 4);							// req_comp = 4 -> load images with Alpha channel support
 		m_ms = toMS(clock::now());
 
 		if (!stb_data)
 		{
-			const char* rawReason = stbi_failure_reason();
-			std::string errReason = rawReason ? rawReason : "Unknown error";
+			const char* rawReason = stbi_failure_reason();														// get the file error by stb
+			std::string errReason = rawReason ? rawReason : "Unknown error";									// check if is a documented failure or set unkown
 
-			return Result {.logs = {{TextCode::IP_stb_data_Failed, {loadPath.generic_string(), errReason}}}};
+			return Result {.logs = {{TextCode::IP_stb_data_Failed, {loadPath.generic_string(), errReason}}}};	// provide the failure to the app -> GUI can report
 		}
 
-		m_IDX = static_cast<int>(m_images.size());
+		m_IDX = static_cast<int>(m_images.size());																// new images are appended to the end of m_images -> m_IDX == .size()
 
 		Result res {.logs = {{TextCode::IP_Load_IDX, {m_IDX}}}};
 		res.logs.push_back({TextCode::Metrics, {"load image", m_ms}});
@@ -88,34 +88,34 @@ namespace PixelStudio
 		std::memcpy(m_RGBA.data(), stb_data, SIZE);
 		m_ms = toMS(clock::now());
 
-		stbi_image_free(stb_data);																				// free(stb_data)
+		stbi_image_free(stb_data);																				// free(stb_data) of the RAM
 
 		res.logs.push_back({TextCode::Metrics, {"RGBA < stb", m_ms}});
 
 		// ----------------------------------------------------------------
-		// 					m_images[m_IDX] <- YUVA data
+		// 				   m_images[m_IDX] <- YCgCoA data
 		// ----------------------------------------------------------------
 		Image img {.stamp = nextStamp(), .w = W, .h = H, .chan = channels};
-		SIZE >>= 2;																								// size of each Y,U,V,A (SIZE / 4 => pixel)
+		SIZE >>= 2;																								// size of each SoA Y,Cg,Co,A (RGBA SIZE / 4)
 
 		img.Y.resize(SIZE);
-		img.U.resize(SIZE);
-		img.V.resize(SIZE);
+		img.Cg.resize(SIZE);
+		img.Co.resize(SIZE);
 		img.A.resize(SIZE);
 
 		m_images.push_back(std::move(img));
 
-		// setting the YUVA SoA
-		toYUVA(res);																							// sets .success accordingly itself
+		// setting the YCgCoA SoA
+		toYCgCoA(res);																							// sets .success accordingly itself
 
-		// updating the RGBA buffer view (internal chanCode is set by toYUVA())
-		m_bufferView.stamp = m_images[m_IDX].stamp;
-		m_bufferView.width = W;
-		m_bufferView.height = H;
-		m_bufferView.chanCode = m_images[m_IDX].chan;
-		m_bufferView.RGBA = std::span<const uint8_t>(m_RGBA.data(), (SIZE << 2));
+		// updating the RGBA buffer view (internal chanCode is set by toYCgCoA())
+		m_bufferView.stamp	= m_images[m_IDX].stamp;
+		m_bufferView.width	= W;
+		m_bufferView.height	= H;
+		m_bufferView.chan	= m_images[m_IDX].chan;
+		m_bufferView.RGBA	= std::span<const uint8_t>(m_RGBA.data(), (SIZE << 2));
 
-		m_W = static_cast<size_t> (W);																			// m_W and m_H are ONLY set by load | select ! (*)
+		m_W = static_cast<size_t> (W);																			// m_W and m_H are ONLY set by load & select ! (*)
 		m_H = static_cast<size_t> (H);
 
 		return res;
@@ -176,37 +176,37 @@ namespace PixelStudio
 		m_t_start = clock::now();
 
 		std::string extension = savePath.extension().string();
-		const int exportChans = (m_images[m_IDX].chan == 3) ? 3 : 4;
+		const int expChans	  = (m_images[m_IDX].chan == 3) ? 3 : 4;
 
 		int width	= m_images[m_IDX].w;
 		int height	= m_images[m_IDX].h;
 		int success = 0;
 
-		const uint8_t* exportData = m_RGBA.data();																// a kind of forward declaration
-		int strideBytes = (width << 2);
+		const uint8_t* expData = m_RGBA.data();																	// a kind of forward declaration
+		int stride = (width << 2);
 		std::vector<uint8_t> rgbStorage;																		// a kind of forward declaration
 
 		const bool isJPG = (extension == ".jpg" || extension == ".jpeg");										// JPG/JPEG always forces 3 channels
-		const bool needsRGB = (exportChans == 3 || isJPG);
+		const bool needsRGB = (expChans == 3 || isJPG);
 
 		if (needsRGB)
 		{
 			rgbStorage = create_RGB();																			// RGB = `RGBA` excluded by the Alpha channel
-			exportData = rgbStorage.data();																		// point exportData to RGB
-			strideBytes = m_images[m_IDX].w * 3;																// 3 Bytes per pixel instead of 4
+			expData	   = rgbStorage.data();																		// point expData to RGB
+			stride	   = m_images[m_IDX].w * 3;																	// 3 Bytes per pixel instead of 4
 		}
 
-		if (isJPG)
-			success = stbi_write_jpg(savePath.string().c_str(), width, height, 3, exportData, 90);
+		if (isJPG)																								// JPG / JPEG
+			success = stbi_write_jpg(savePath.string().c_str(), width, height, 3, expData, 90);					// 90 = 90% Quality
 
-		else if (extension == ".bmp")
-			success = stbi_write_bmp(savePath.string().c_str(), width, height, exportChans, exportData);
+		else if (extension == ".bmp")																			// BMP
+			success = stbi_write_bmp(savePath.string().c_str(), width, height, expChans, expData);
 
-		else if (extension == ".tga")
-			success = stbi_write_tga(savePath.string().c_str(), width, height, exportChans, exportData);
+		else if (extension == ".tga")																			// TGA
+			success = stbi_write_tga(savePath.string().c_str(), width, height, expChans, expData);
 
-		else // default = png
-			success = stbi_write_png(savePath.string().c_str(), width, height, exportChans, exportData, strideBytes);
+		else																									// PNG (default)
+			success = stbi_write_png(savePath.string().c_str(), width, height, expChans, expData, stride);
 
 
 		m_ms = toMS(clock::now());
@@ -242,19 +242,18 @@ namespace PixelStudio
 
 		m_t_start = clock::now();
 
-		const uint32_t size = m_images[m_IDX].Y.size();
-		float* __restrict Y = m_images[m_IDX].Y.data();
+		const uint32_t size	  = m_images[m_IDX].Y.size();
+		uint8_t* __restrict Y = m_images[m_IDX].Y.data();
 
-		if (value > 0.0f)																						// positive?
-		{
-			for (uint32_t i = 0; i < size; ++i)
-				Y[i] = std::min(Y[i] + value, 1.0f);
-		}
-		else																									// negative?
-		{
-			for (uint32_t i = 0; i < size; ++i)
-				Y[i] = std::max(Y[i] + value, 0.0f);
-		}
+		const int offset = static_cast<int>(value * 255.0f);
+
+		uint8_t lut[256];
+		for (int i = 0; i < 256; ++i)
+			lut[i] = static_cast<uint8_t>(std::clamp(i + offset, 0, 255));
+
+		for (uint32_t i = 0; i < size; ++i)
+			Y[i] = lut[Y[i]];
+
 		m_ms = toMS(clock::now());
 
 		Result res {.logs = {{TextCode::Metrics, {"added Y(I)", m_ms}}}};
@@ -277,12 +276,37 @@ namespace PixelStudio
 
 		m_t_start = clock::now();
 
-		const uint32_t size = m_images[m_IDX].Y.size();
-		float* __restrict Y = m_images[m_IDX].Y.data();
+		const uint32_t size	   = m_images[m_IDX].Y.size();
+		uint8_t* __restrict Y  = m_images[m_IDX].Y.data();
+		int16_t* __restrict Cg = m_images[m_IDX].Cg.data();
+		int16_t* __restrict Co = m_images[m_IDX].Co.data();
+
 		const float mult = 1.0f + factor;
 
-		for (uint32_t i = 0; i < size; ++i)
-			Y[i] = std::min(Y[i] * mult, 1.0f);
+		// for (uint32_t i = 0; i < size; ++i)																	// ******* earlier YUVA variant !!! *******
+		// 	Y[i] = std::min(Y[i] * mult, 1.0f);																	// ******* earlier YUVA variant !!! *******
+		// 	Y[i] = std::min(Y[i] * mult, 255);
+
+		uint8_t lutY[256];																						// LUT for Y (256 Bytes)
+		for (int i = 0; i < 256; ++i)
+		{
+			int val = static_cast<int>(std::round(static_cast<float>(i) * mult));
+			lutY[i] = static_cast<uint8_t>(std::clamp(val, 0, 255));
+		}
+
+		int16_t lutChroma[511];																					// Combined LUT for Cg & Co (-255..255, 1024 Bytes)
+		for (int i = -255; i < 256; ++i)
+		{
+			int val = static_cast<int>(std::round(static_cast<float>(i) * mult));
+			lutChroma[i + 255] = static_cast<int16_t>(std::clamp(val, -255, 255));
+		}
+
+		for (uint32_t i = 0; i < size; ++i)																		// Ultra-fast loop: Only 3 L1 cache lookups per pixel!
+		{
+			Y[i]  = lutY[Y[i]];
+			Cg[i] = lutChroma[Cg[i] + 255];																		// index shift +255
+			Co[i] = lutChroma[Co[i] + 255];																		// index shift +255
+		}
 
 		m_ms = toMS(clock::now());
 
@@ -306,15 +330,16 @@ namespace PixelStudio
 
 		if (k == -1.0f) return toNegative();																	// => inverts the image - returns `Result` via toRGBA()
 
-		const uint32_t size = m_images[m_IDX].Y.size();
-		float* __restrict Y = m_images[m_IDX].Y.data();
+		const uint32_t size	  = m_images[m_IDX].Y.size();
+		uint8_t* __restrict Y = m_images[m_IDX].Y.data();
 
 		if (k == 0.0f)																							// => set each Y = 0.5f
 		{
 			m_t_start = clock::now();
 
 			for (uint32_t i = 0; i < size; ++i)
-				Y[i] = 0.5f;
+				Y[i] = 127;
+			// 	Y[i] = 0.5f;																					// ******* earlier YUVA variant !!! *******
 
 			m_ms = toMS(clock::now());
 
@@ -327,10 +352,22 @@ namespace PixelStudio
 		else																									// ImGui slider ranges are safe
 		{
 			m_t_start = clock::now();
-			const float offset = (1.0f - k) * 0.5f;
+			const float offset = ((1.0f - k) * 0.5f) * 255.0f;
+
+			// const float offset = (1.0f - k) * 0.5f;															// ******* earlier YUVA variant !!! *******
+
+			// for (uint32_t i = 0; i < size; ++i)																// ******* earlier YUVA variant !!! *******
+			// 	Y[i] = std::clamp(k * Y[i] + offset, 0.0f, 1.0f);												// ******* earlier YUVA variant !!! *******
+
+			uint8_t lut[256];
+			for (int i = 0; i < 256; ++i)
+			{
+				int val = static_cast<int>(static_cast<float>(i) * k + offset);
+				lut[i] = static_cast<uint8_t>(std::clamp(val, 0, 255));
+			}
 
 			for (uint32_t i = 0; i < size; ++i)
-				Y[i] = std::clamp(k * Y[i] + offset, 0.0f, 1.0f);
+				Y[i] = lut[Y[i]];
 
 			m_ms = toMS(clock::now());
 
@@ -353,11 +390,12 @@ namespace PixelStudio
 
 		m_t_start = clock::now();
 
-		const uint32_t size = m_images[m_IDX].Y.size();
-		float* __restrict Y = m_images[m_IDX].Y.data();
+		const uint32_t size	  = m_images[m_IDX].Y.size();
+		uint8_t* __restrict Y = m_images[m_IDX].Y.data();
 
 		for (uint32_t i = 0; i < size; ++i)
-			Y[i] = 1.0f - Y[i];
+			Y[i] = 255 - Y[i];
+		//	Y[i] = 1.0f - Y[i];																					// ******* earlier YUVA variant !!! *******
 
 		m_ms = toMS(clock::now());
 
@@ -385,14 +423,21 @@ namespace PixelStudio
 
 		m_t_start = clock::now();
 
-		const uint32_t size = m_images[m_IDX].Y.size();
-		float* __restrict Y = m_images[m_IDX].Y.data();
+		const uint32_t size	  = m_images[m_IDX].Y.size();
+		uint8_t* __restrict Y = m_images[m_IDX].Y.data();
 
+		// precalculating all 256 possible values [0, 255] once
+		uint8_t lut[256];
+		for (int i = 0; i < 256; ++i)
+			lut[i] = static_cast<uint8_t>(m_CDF[i] * 255.0f);
+
+		// run over 8-Bit integer table-lookups in L1-Cache
 		#ifdef PARALLEL_RUN
 		#pragma omp parallel for proc_bind(close) schedule(guided, m_CHUNK_SIZE)
 		#endif
 		for (uint32_t i = 0; i < size; ++i)
-			Y[i] = static_cast<float>(m_CDF[quantize(Y[i])]);
+			Y[i] = lut[Y[i]];
+		//	Y[i] = static_cast<float>(m_CDF[quantize(Y[i])]);													// ******* earlier YUVA variant !!! *******
 
 		m_ms = toMS(clock::now());
 
@@ -466,37 +511,39 @@ namespace PixelStudio
 
 		const uint32_t size = m_images[m_IDX].Y.size();
 
-		float* __restrict Y = m_images[m_IDX].Y.data();
-		float* __restrict U = m_images[m_IDX].U.data();
-		float* __restrict V = m_images[m_IDX].V.data();
-		float* __restrict A = m_images[m_IDX].A.data();
+		uint8_t* __restrict Y  = m_images[m_IDX].Y.data();
+		int16_t* __restrict Cg = m_images[m_IDX].Cg.data();
+		int16_t* __restrict Co = m_images[m_IDX].Co.data();
+		uint8_t* __restrict A  = m_images[m_IDX].A.data();
+
+		const int T = static_cast<int>(t * 255.0f);
 
 		for (uint32_t i = 0; i < size; ++i)
 		{
-			if (Y[i] < t) // ------------------- FOREGROUND -------------------
+			if (Y[i] < T) // ------------------- FOREGROUND -------------------
 			{
 				if (!keepColor)
 				{
-					Y[i] = 0.0f;																				// full black foreground (modes 0 & 2)
-					U[i] = 0.0f;
-					V[i] = 0.0f;
-					A[i] = 1.0f;																				// full opaque foreground
+					Y[i]  = 0;																					// full black foreground (modes 0 & 2)
+					Cg[i] = 0;
+					Co[i] = 0;
+					A[i]  = 255;																				// full opaque foreground
 				}
-				// keep color => don't touch YUVA (mode 1 & 3)
-				allZero &= (A[i] == 0.0f);																		// but check if foreground Alpha is "allZero"
-				allOnes &= (A[i] == 1.0f);																		// or "allOnes"
+				// keep color => don't touch YCgCoA (mode 1 & 3)
+				allZero &= (A[i] == 0);																			// but check if foreground Alpha is "allZero"
+				allOnes &= (A[i] == 255);																		// or "allOnes"
 			}
 
 			else // ---------------------------- BACKGROUND -------------------
 			{
-				if (bgTransparent) A[i] = 0.0f;																	// YUV stays untouched but A = 0 (modes 2 & 3)
+				if (bgTransparent) A[i] = 0;																	// YUV stays untouched but A = 0 (modes 2 & 3)
 
 				else																							// background full white & A = 1 (modes 0 & 1)
 				{
-					Y[i] = 1.0f;
-					U[i] = 0.0f;
-					V[i] = 0.0f;
-					A[i] = 1.0f;
+					Y[i]  = 255;
+					Cg[i] = 0;
+					Co[i] = 0;
+					A[i]  = 255;
 				}
 			}
 		}
@@ -561,34 +608,36 @@ namespace PixelStudio
 		#endif
 
 		// after manipulating directly the m_RGBA => updating the buffer view
-		m_bufferView.stamp = m_images[m_IDX].stamp = nextStamp();												// stamp this manipulation
-		m_bufferView.width = m_images[m_IDX].w;
-		m_bufferView.height = m_images[m_IDX].h;
-		m_bufferView.chanCode = m_images[m_IDX].chan;
-		m_bufferView.RGBA = std::span<const uint8_t>(m_RGBA.data(), size);
+		m_bufferView.stamp	= m_images[m_IDX].stamp = nextStamp();												// stamp this manipulation
+		m_bufferView.width	= m_images[m_IDX].w;
+		m_bufferView.height	= m_images[m_IDX].h;
+		m_bufferView.chan	= m_images[m_IDX].chan;
+		m_bufferView.RGBA	= std::span<const uint8_t>(m_RGBA.data(), size);
 
-		// also updating the YUVA SoA
-		return toYUVA(res);																						// returns `Result` accordingly itself
+		// also updating the YCgCoA SoA
+		return toYCgCoA(res);																					// returns `Result` accordingly itself
 	}
 
 	/**
-	 * @brief Sets each Alpha channel value of the image to the passed value in the range [0.0, 1.0].
+	 * @brief Sets each Alpha channel value of the image to the passed percentage value.
 	 * @note Incoming values are backed up by ImGui slider ranges and mustn't checked. ImGuiSliderFlags_NoInput are used !!!
-	 * @param value `float` value in the range [0.0, 1.0] to set the overall Alpha channel of the image to
+	 * @param value `float` percentage value in the range [0.0, 1.0] to set the overall Alpha channel of the image to
 	 * @return `Result` {success, logs}
 	 */
 	Result ImageProcessor::setAlpha(float val)
 	{
 		m_t_start = clock::now();
 
-		float* __restrict A = m_images[m_IDX].A.data();
-		const uint32_t size = m_images[m_IDX].Y.size();
+		const uint32_t size	  = m_images[m_IDX].Y.size();
+		uint8_t* __restrict A = m_images[m_IDX].A.data();
+
+		const uint8_t alpha = static_cast<uint8_t>(std::round(255.0f * val));
 
 		#ifdef PARALLEL_RUN
 		#pragma omp parallel for proc_bind(close) schedule(guided, (m_CHUNK_SIZE))
 		#endif
 		for (uint32_t i = 0; i < size; ++i)
-			A[i] = val;
+			A[i] = alpha;
 
 		m_ms = toMS(clock::now());
 
@@ -598,10 +647,10 @@ namespace PixelStudio
 		Result res {.logs = {{TextCode::Metrics, {"Alpha chan", m_ms}}}};
 		#endif
 
-		// updating chanCode according to new Alpha value
+		// updating chanCode according to passed Alpha value
 		if (val == 0.0f)	  m_images[m_IDX].chan = 0;
 		else if (val == 1.0f) m_images[m_IDX].chan = 3;
-		else				  m_images[m_IDX].chan = 2;
+		else				  m_images[m_IDX].chan = 4;
 
 		m_images[m_IDX].stamp = nextStamp();																	// stamp this manipulation
 
@@ -622,71 +671,73 @@ namespace PixelStudio
 	 */
 	Result ImageProcessor::applyStandardFilter(Filter f)
 	{
-		if (m_images[m_IDX].chan == 0) return Result {.logs = {{TextCode::IP_Skip_Alpha0, {}}}};				// skip manip. of fully transparent images
+		return Result {};
 
-		Result res {.success = true};																			// preset success
+		// if (m_images[m_IDX].chan == 0) return Result {.logs = {{TextCode::IP_Skip_Alpha0, {}}}};				// skip manip. of fully transparent images
 
-		if (m_PADstamp == m_images[m_IDX].stamp && m_fRad == f.rad)												// `padImg` belongs to curr image & filter radius is unchanged?
-			res.logs.push_back({TextCode::IP_Skip_Padding, {}});
-		else
-			setPadImg(res, f);
+		// Result res {.success = true};																			// preset success
 
-		if (!res.success)																						// padding has failed?
-		{
-			res.logs.push_back({TextCode::IP_Convolution_Padding_Failed, {}});
-			return res;
-		}
+		// if (m_PADstamp == m_images[m_IDX].stamp && m_fRad == f.rad)												// `padImg` belongs to curr image & filter radius is unchanged?
+		// 	res.logs.push_back({TextCode::IP_Skip_Padding, {}});
+		// else
+		// 	setPadImg(res, f);
 
-		m_t_start = clock::now();
-
-		// uint32_t padH = m_H + (f.rad << 1);
-		size_t padW = m_W + (f.rad << 1);
-		size_t k = 0;
-
-		// m_padImg.resize(static_cast<uint64_t>(padW) * padH);
-
-		// for (uint64_t y = 0; y < m_H; ++y)
+		// if (!res.success)																						// padding has failed?
 		// {
-		// 	uint64_t row = (y + f.rad) * padW;
-
-		// 	for (uint32_t x = 0; x < m_W; ++x)
-		// 		m_padImg[row + x + f.rad] = m_images[m_IDX].Y[k++];
+		// 	res.logs.push_back({TextCode::IP_Convolution_Padding_Failed, {}});
+		// 	return res;
 		// }
 
-		k = 0;
-		for (size_t y = 0; y < m_H; ++y)
-		{
-			size_t row = (y + f.rad) * padW;
+		// m_t_start = clock::now();
 
-			for (size_t x = 0; x < m_W; ++x)
-			{
-				size_t cen = row + f.rad + x;
+		// // uint32_t padH = m_H + (f.rad << 1);
+		// size_t padW = m_W + (f.rad << 1);
+		// size_t k = 0;
 
-				float valX = 0.5f;
-				float valY = 0.5f;
+		// // m_padImg.resize(static_cast<uint64_t>(padW) * padH);
 
-				size_t up = cen - f.rad * padW;
-				size_t dw = cen + f.rad * padW;
+		// // for (uint64_t y = 0; y < m_H; ++y)
+		// // {
+		// // 	uint64_t row = (y + f.rad) * padW;
 
-				valX += (m_padImg[up - 1] * f.kernel[0] + m_padImg[cen - 1] * f.kernel[3] + m_padImg[dw - 1] * f.kernel[6]);
-				valX += (m_padImg[up + 1] * f.kernel[2] + m_padImg[cen + 1] * f.kernel[5] + m_padImg[dw + 1] * f.kernel[8]);
+		// // 	for (uint32_t x = 0; x < m_W; ++x)
+		// // 		m_padImg[row + x + f.rad] = m_images[m_IDX].Y[k++];
+		// // }
 
-				valY += (m_padImg[up - 1] * f.kernel[0] + m_padImg[up] * f.kernel[1] + m_padImg[up + 1] * f.kernel[2]);
-				valY += (m_padImg[dw - 1] * f.kernel[6] + m_padImg[dw] * f.kernel[7] + m_padImg[dw + 1] * f.kernel[8]);
+		// k = 0;
+		// for (size_t y = 0; y < m_H; ++y)
+		// {
+		// 	size_t row = (y + f.rad) * padW;
 
-				m_harris.Ix[k] = std::clamp(valX, 0.0f, 1.0f);
-				m_harris.Iy[k] = std::clamp(valY, 0.0f, 1.0f);
+		// 	for (size_t x = 0; x < m_W; ++x)
+		// 	{
+		// 		size_t cen = row + f.rad + x;
 
-				++k;
-			}
-		}
+		// 		float valX = 0.5f;
+		// 		float valY = 0.5f;
 
-		m_ms = toMS(clock::now());
+		// 		size_t up = cen - f.rad * padW;
+		// 		size_t dw = cen + f.rad * padW;
 
-		res.logs.push_back({TextCode::Metrics, {"filter_3x3", m_ms}});
-		//m_PADstamp = m_images[m_IDX].stamp = nextStamp();
+		// 		valX += (m_padImg[up - 1] * f.kernel[0] + m_padImg[cen - 1] * f.kernel[3] + m_padImg[dw - 1] * f.kernel[6]);
+		// 		valX += (m_padImg[up + 1] * f.kernel[2] + m_padImg[cen + 1] * f.kernel[5] + m_padImg[dw + 1] * f.kernel[8]);
 
-		return toRGBA(res);																						// returns `Result` accordingly itself
+		// 		valY += (m_padImg[up - 1] * f.kernel[0] + m_padImg[up] * f.kernel[1] + m_padImg[up + 1] * f.kernel[2]);
+		// 		valY += (m_padImg[dw - 1] * f.kernel[6] + m_padImg[dw] * f.kernel[7] + m_padImg[dw + 1] * f.kernel[8]);
+
+		// 		m_harris.I_x[k] = std::clamp(valX, 0.0f, 1.0f);
+		// 		m_harris.I_y[k] = std::clamp(valY, 0.0f, 1.0f);
+
+		// 		++k;
+		// 	}
+		// }
+
+		// m_ms = toMS(clock::now());
+
+		// res.logs.push_back({TextCode::Metrics, {"filter_3x3", m_ms}});
+		// //m_PADstamp = m_images[m_IDX].stamp = nextStamp();
+
+		// return toRGBA(res);																						// returns `Result` accordingly itself
 	}
 
 	/**
@@ -698,75 +749,77 @@ namespace PixelStudio
 	 */
 	Result ImageProcessor::applyGenericFilter(Filter f)
 	{
-		if (m_images[m_IDX].chan == 0) return Result {.logs = {{TextCode::IP_Skip_Alpha0, {}}}};				// skip manip. of fully transparent images
+		return Result {};
 
-		Result res {.success = true};																			// preset success
+		// if (m_images[m_IDX].chan == 0) return Result {.logs = {{TextCode::IP_Skip_Alpha0, {}}}};				// skip manip. of fully transparent images
 
-		if (m_PADstamp == m_images[m_IDX].stamp && m_fRad == f.rad)												// `padImg` belongs to curr image & filter radius is unchanged?
-			res.logs.push_back({TextCode::IP_Skip_Padding, {}});
-		else
-			setPadImg(res, f);
+		// Result res {.success = true};																			// preset success
 
-		if (!res.success)																						// padding has failed?
-		{
-			res.logs.push_back({TextCode::IP_Convolution_Padding_Failed, {}});
-			return res;
-		}
+		// if (m_PADstamp == m_images[m_IDX].stamp && m_fRad == f.rad)												// `padImg` belongs to curr image & filter radius is unchanged?
+		// 	res.logs.push_back({TextCode::IP_Skip_Padding, {}});
+		// else
+		// 	setPadImg(res, f);
 
-		m_t_start = clock::now();
+		// if (!res.success)																						// padding has failed?
+		// {
+		// 	res.logs.push_back({TextCode::IP_Convolution_Padding_Failed, {}});
+		// 	return res;
+		// }
 
-		size_t pad_H = m_H + (f.rad << 1);
-		size_t pad_W = m_W + (f.rad << 1);
+		// m_t_start = clock::now();
 
-		// =============================================== the convolution of the `padImg` and the specified filter ==================================================
+		// size_t pad_H = m_H + (f.rad << 1);
+		// size_t pad_W = m_W + (f.rad << 1);
 
-		#ifdef PARALLEL_RUN
-		#pragma omp parallel for default(none) shared(m_H, m_W, pad_W, m_padImg, m_images, f, m_IDX) schedule(static)
-		#endif
-		for (size_t y = 0; y < m_H; ++y)
-		{
-			size_t img_row = y * m_W;
+		// // =============================================== the convolution of the `padImg` and the specified filter ==================================================
 
-			for (size_t x = 0; x < m_W; ++x)
-			{
-				float conv_val = 0.5f;																			// resulting convolution value (grey offset = 0.5f)
-				size_t k_idx = 0;																				// kernel index
+		// #ifdef PARALLEL_RUN
+		// #pragma omp parallel for default(none) shared(m_H, m_W, pad_W, m_padImg, m_images, f, m_IDX) schedule(static)
+		// #endif
+		// for (size_t y = 0; y < m_H; ++y)
+		// {
+		// 	size_t img_row = y * m_W;
 
-				for (int ky = -f.rad; ky <= f.rad; ++ky)														// dynamic filter loop (3x3, 5x5x, 7x7,..., nxn)
-				{
-					size_t p_y = (y + f.rad + ky) * pad_W;														// absolute y coordinate of padImg (1D vector)
+		// 	for (size_t x = 0; x < m_W; ++x)
+		// 	{
+		// 		float conv_val = 0.5f;																			// resulting convolution value (grey offset = 0.5f)
+		// 		size_t k_idx = 0;																				// kernel index
 
-					for (int kx = -f.rad; kx <= f.rad; ++kx)
-					{
-						size_t p_x = x + f.rad + kx;															// absolute x coordinate of padImg (1D vector)
-						size_t pImg_i = p_y + p_x;																// calculating 1D index
+		// 		for (int ky = -f.rad; ky <= f.rad; ++ky)														// dynamic filter loop (3x3, 5x5x, 7x7,..., nxn)
+		// 		{
+		// 			size_t p_y = (y + f.rad + ky) * pad_W;														// absolute y coordinate of padImg (1D vector)
 
-						conv_val += m_padImg[pImg_i] * f.kernel[k_idx++];										// accumulating the (padImg * filter) values
-					}
-				}
+		// 			for (int kx = -f.rad; kx <= f.rad; ++kx)
+		// 			{
+		// 				size_t p_x = x + f.rad + kx;															// absolute x coordinate of padImg (1D vector)
+		// 				size_t pImg_i = p_y + p_x;																// calculating 1D index
 
-				conv_val = std::clamp(conv_val, 0.0f, 1.0f);													// clamping the convolution value
+		// 				conv_val += static_cast<float>(m_padImg[pImg_i]) * f.kernel[k_idx++];					// accumulating the (padImg * filter) values
+		// 			}
+		// 		}
 
-				size_t img_idx = img_row + x;
+		// 		conv_val = std::clamp(conv_val, 0.0f, 1.0f);													// clamping the convolution value
 
-				m_images[m_IDX].Y[img_idx] = conv_val;
-				m_images[m_IDX].U[img_idx] = 0.0f;
-				m_images[m_IDX].V[img_idx] = 0.0f;
-				m_images[m_IDX].A[img_idx] = 1.0f;
-			}
-		}
-		// -----------------------------------------------------------------------------------------------------------------------------------------------------------
+		// 		size_t img_idx = img_row + x;
 
-		m_images[m_IDX].chan = 3;																				// now the image is  fully opaque
-		m_ms = toMS(clock::now());
+		// 		m_images[m_IDX].Y[img_idx]	= static_cast<uint8_t>(conv_val);
+		// 		m_images[m_IDX].Cg[img_idx] = 0;
+		// 		m_images[m_IDX].Co[img_idx] = 0;
+		// 		m_images[m_IDX].A[img_idx]	= 255;
+		// 	}
+		// }
+		// // -----------------------------------------------------------------------------------------------------------------------------------------------------------
 
-		#ifdef PARALLEL_RUN
-		res.logs.push_back({TextCode::Metrics_Parallel, {"gen filter", m_ms}});
-		#else
-		res.logs.push_back({TextCode::Metrics, {"gen filter", m_ms}});
-		#endif
+		// m_images[m_IDX].chan = 3;																				// now the image is fully opaque
+		// m_ms = toMS(clock::now());
 
-		return toRGBA(res);																						// returns `Result` accordingly itself
+		// #ifdef PARALLEL_RUN
+		// res.logs.push_back({TextCode::Metrics_Parallel, {"gen filter", m_ms}});
+		// #else
+		// res.logs.push_back({TextCode::Metrics, {"gen filter", m_ms}});
+		// #endif
+
+		// return toRGBA(res);																						// returns `Result` accordingly itself
 	}
 
 	/**
@@ -797,8 +850,8 @@ namespace PixelStudio
 
 		const size_t size = m_images[m_IDX].Y.size();
 
-		m_harris.Ix.resize(size);
-		m_harris.Iy.resize(size);
+		m_harris.I_x.resize(size);
+		m_harris.I_y.resize(size);
 
 		m_harris.Ixx.resize(size);
 		m_harris.Iyy.resize(size);
@@ -847,9 +900,11 @@ namespace PixelStudio
 	 */
 	Result ImageProcessor::compareRGBA(int oIdx)
 	{
+		return Result {};
+
 		Result res {.success = true};																			// preset success
 
-		if (m_bufferView.stamp != m_images[m_IDX].stamp) toRGBA(res);											// does `RGBA` belongs to this images YUVA? (*)
+		if (m_bufferView.stamp != m_images[m_IDX].stamp) toRGBA(res);											// does `RGBA` belongs to this images YCgCoA? (*)
 
 		if (!res.success)																						// toRGBA() failed ?
 		{
@@ -862,10 +917,10 @@ namespace PixelStudio
 		{
 			const size_t size = m_images[oIdx].Y.size();
 
-			const float* __restrict Y = m_images[oIdx].Y.data();
-			const float* __restrict U = m_images[oIdx].U.data();
-			const float* __restrict V = m_images[oIdx].V.data();
-			const float* __restrict A = m_images[oIdx].A.data();
+			const uint8_t* __restrict Y  = m_images[oIdx].Y.data();
+			const int16_t* __restrict Cg = m_images[oIdx].Cg.data();
+			const int16_t* __restrict Co = m_images[oIdx].Co.data();
+			const uint8_t* __restrict A  = m_images[oIdx].A.data();
 
 			const uint8_t* __restrict pRGBA = m_RGBA.data();													// pRGBA points to the RGBA of the curr selected m_images[m_IDX]!
 
@@ -878,15 +933,20 @@ namespace PixelStudio
 				{
 					size_t k = (i << 2);
 
-					float R = Y[i] + (V[i] * INV_V_max);
-					float B = Y[i] + (U[i] * INV_U_max);
-					float G = (Y[i] - k_R * R - k_B * B) * INV_k_G;
+					int16_t y  = Y[i];
+					int16_t cg = Cg[i];
+					int16_t co = Co[i];
+
+					int16_t t = static_cast<int16_t>(y - (cg >> 1));
+					int16_t G = static_cast<int16_t>(cg + t);
+					int16_t B = static_cast<int16_t>(t - (co >> 1));
+					int16_t R = static_cast<int16_t>(B + co);
 
 					// compare: pRGBA <> m_images[oIdx] its converted RGBA (on thge fly)
-					if (pRGBA[k + 0] != quantize(R) ||
-						pRGBA[k + 1] != quantize(G) ||
-						pRGBA[k + 2] != quantize(B) ||
-						pRGBA[k + 3] != quantize(A[i]))
+					if (pRGBA[k + 0] != static_cast<uint8_t>(std::clamp<int16_t>(R, 0, 255)) ||
+						pRGBA[k + 1] != static_cast<uint8_t>(std::clamp<int16_t>(G, 0, 255)) ||
+						pRGBA[k + 2] != static_cast<uint8_t>(std::clamp<int16_t>(B, 0, 255)) ||
+						pRGBA[k + 3] != A[i])
 					{
 						++diff;
 					}
@@ -986,14 +1046,14 @@ namespace PixelStudio
 	// =======================================================================================================================================================================
 
 	/**
-	 * @brief Converts the current `RGBA` data into the YUVA SoA data structure and the channel code is set.
+	 * @brief Converts the current `RGBA` data into the YCgCoA SoA data structure and the channel code is set.
 	 * @note During conversion, the Alpha channel values ​​are checked on variance. Since the pixels in most images share the same Alpha value, it makes sense to precalculate
 	 * the conversion once and apply this value to every pixel. The key aspect of this approach is the significantly more efficient reuse of `toRGBA()`, which is called after
 	 * every image processing step to display the result immediately on the screen.
 	 * @param res a container within the information pipeline to which messages can be appended at the end
 	 * @return `Result` {success, logs}
 	 */
-	Result ImageProcessor::toYUVA(Result &res)
+	Result ImageProcessor::toYCgCoA(Result &res)
 	{
 		res.success = false;
 
@@ -1001,69 +1061,49 @@ namespace PixelStudio
 
 		const size_t size = m_images[m_IDX].Y.size();
 
-		float* __restrict Y = m_images[m_IDX].Y.data();
-		float* __restrict U = m_images[m_IDX].U.data();
-		float* __restrict V = m_images[m_IDX].V.data();
-		float* __restrict A = m_images[m_IDX].A.data();
+		uint8_t* __restrict Y  = m_images[m_IDX].Y.data();
+		int16_t* __restrict Cg = m_images[m_IDX].Cg.data();
+		int16_t* __restrict Co = m_images[m_IDX].Co.data();
+		uint8_t* __restrict A  = m_images[m_IDX].A.data();
 
 		const uint8_t* __restrict pRGBA = m_RGBA.data();
 
-		if (m_images[m_IDX].chan != 4)																			// Alpha channel is uniform [0.0, 1.0]
+		const uint8_t alpha0 = pRGBA[3];																	// alpha0 <- 1st Alpha of RGBA [0, 255]
+		bool uniform = true;																				// assumption: Alpha channel is uniform
+
+		// only makes sense to parallelize using Open MPI (message passing) !!!
+		for (size_t i = 0; i < size; ++i)
 		{
-			const float fA = static_cast<float>(pRGBA[3]) * INV_255;
+			size_t k = (i << 2);
 
-			for (size_t i = 0; i < size; ++i)
-			{
-				size_t k = i * 4;
+			int16_t r = static_cast<int16_t>(pRGBA[k + 0]);
+			int16_t g = static_cast<int16_t>(pRGBA[k + 1]);
+			int16_t b = static_cast<int16_t>(pRGBA[k + 2]);
+			uint8_t a = pRGBA[k + 3];
 
-				float R = static_cast<float>(pRGBA[k + 0]) * INV_255;
-				float G = static_cast<float>(pRGBA[k + 1]) * INV_255;
-				float B = static_cast<float>(pRGBA[k + 2]) * INV_255;
+			if (a != alpha0) uniform = false;																// uniform or not check
 
-				float y = k_R * R + k_G * G + k_B * B;
+			int16_t co = static_cast<int16_t>(r - b);
+			int16_t t  = static_cast<int16_t>(b + (co >> 1));
+			int16_t cg = static_cast<int16_t>(g - t);
+			int16_t y  = static_cast<int16_t>(t + (cg >> 1));
 
-				Y[i] = y;
-				U[i] = k_U * (B - y) * INV_k_B;
-				V[i] = k_V * (R - y) * INV_k_R;
-				A[i] = fA;
-			}
+			Y[i]  = static_cast<uint8_t>(y);
+			Cg[i] = cg;
+			Co[i] = co;
+			A[i]  = a;
 		}
 
-		else																									// Alpha cnannel has legit values (kind will be set in this loop)
+		m_images[m_IDX].chan = 4;																			// chanCode 4 -> Alpha is valid (uniform @(0, 255) or varies)
+
+		if (uniform)																						// if all Alpha are uniform
 		{
-			const float fAlpha0 = static_cast<float>(pRGBA[3]) * INV_255;										// fAlpha0 <- 1st Alpha of RGBA converted to float [0.0, 1.0]
-			bool uniform = true;																				// assumption: Alpha channel is uniform
-
-			// only makes sense to parallelize using Open MPI (message passing) !!!
-			for (size_t i = 0; i < size; ++i)
-			{
-				size_t k = i * 4;
-
-				float R  = static_cast<float>(pRGBA[k + 0]) * INV_255;
-				float G  = static_cast<float>(pRGBA[k + 1]) * INV_255;
-				float B  = static_cast<float>(pRGBA[k + 2]) * INV_255;
-				float fA = static_cast<float>(pRGBA[k + 3]) * INV_255;
-
-				if (fA != fAlpha0) uniform = false;																// uniform or not check
-
-				float y = k_R * R + k_G * G + k_B * B;
-
-				Y[i] = y;
-				U[i] = k_U * (B - y) * INV_k_B;
-				V[i] = k_V * (R - y) * INV_k_R;
-				A[i] = fA;
-			}
-
-			if (uniform)																						// if all Alpha are uniform (curr chan is still 4)
-			{
-				if (fAlpha0 == 0.0f)
-					m_images[m_IDX].chan = 0;																	// internal code 0 -> all Alpha 0.0
-				else if (fAlpha0 == 1.0f)
-					m_images[m_IDX].chan = 3;																	// internal code 3 -> all Alpha 1.0
-				else
-					m_images[m_IDX].chan = 2;																	// internal code 2 -> all Alpha uniform at 0.0 < x < 1.0
-			}
+			if (alpha0 == 0)
+				m_images[m_IDX].chan = 0;																	// chanCode 0 -> all Alpha 0
+			else if (alpha0 == 255)
+				m_images[m_IDX].chan = 3;																	// chanCode 3 -> all Alpha 255
 		}
+
 		m_ms = toMS(clock::now());
 
 		res.logs.push_back({TextCode::Metrics, {"RGBA > YUV", m_ms}});
@@ -1073,7 +1113,7 @@ namespace PixelStudio
 	}
 
 	/**
-	 * @brief Reconstructs the RGBA values by the YUVA data of the selected image and stores the converted values in the `m_RGBA` vector, which is used to display the image
+	 * @brief Reconstructs the RGBA values by the YCgCoA data of the selected image and stores the converted values in the `m_RGBA` vector, which is used to display the image
 	 * after any modification efficiently.
 	 * @param res a container within the information pipeline to which messages can be appended at the end
 	 * @return `Result` {success, logs}
@@ -1087,53 +1127,33 @@ namespace PixelStudio
 		const size_t size = m_images[m_IDX].Y.size();
 		m_RGBA.resize(size << 2);
 
-		const float* __restrict Y = m_images[m_IDX].Y.data();
-		const float* __restrict U = m_images[m_IDX].U.data();
-		const float* __restrict V = m_images[m_IDX].V.data();
-		const float* __restrict A = m_images[m_IDX].A.data();
+		const uint8_t* __restrict Y  = m_images[m_IDX].Y.data();
+		const int16_t* __restrict Cg = m_images[m_IDX].Cg.data();
+		const int16_t* __restrict Co = m_images[m_IDX].Co.data();
+		const uint8_t* __restrict A  = m_images[m_IDX].A.data();
 
 		uint8_t* __restrict pRGBA = m_RGBA.data();
 
-		if (m_images[m_IDX].chan != 4)																			// uniform Alpha ?
+		#ifdef PARALLEL_RUN
+		#pragma omp parallel for proc_bind(close) schedule(guided, m_CHUNK_SIZE)
+		#endif
+		for (size_t i = 0; i < size; ++i)
 		{
-			const uint8_t qAlpha = quantize(A[0]);
+			size_t k = (i << 2);
 
-			#ifdef PARALLEL_RUN
-			#pragma omp parallel for proc_bind(close) schedule(guided, m_CHUNK_SIZE)
-			#endif
-			for (size_t i = 0; i < size; ++i)
-			{
-				size_t k = (i << 2);
+			int16_t y  = Y[i];
+			int16_t cg = Cg[i];
+			int16_t co = Co[i];
 
-				float R = Y[i] + (V[i] * INV_V_max);
-				float B = Y[i] + (U[i] * INV_U_max);
-				float G = (Y[i] - k_R * R - k_B * B) * INV_k_G;
+			int16_t t = static_cast<int16_t>(y - (cg >> 1));
+			int16_t g = static_cast<int16_t>(cg + t);
+			int16_t b = static_cast<int16_t>(t - (co >> 1));
+			int16_t r = static_cast<int16_t>(b + co);
 
-				pRGBA[k + 0] = quantize(R);
-				pRGBA[k + 1] = quantize(G);
-				pRGBA[k + 2] = quantize(B);
-				pRGBA[k + 3] = qAlpha;
-			}
-		}
-
-		else																									// chan == 4 (Alpha probably varies)
-		{
-			#ifdef PARALLEL_RUN
-			#pragma omp parallel for proc_bind(close) schedule(guided, m_CHUNK_SIZE)
-			#endif
-			for (size_t i = 0; i < size; ++i)
-			{
-				size_t k = (i << 2);
-
-				float R = Y[i] + (V[i] * INV_V_max);
-				float B = Y[i] + (U[i] * INV_U_max);
-				float G = (Y[i] - k_R * R - k_B * B) * INV_k_G;
-
-				pRGBA[k + 0] = quantize(R);
-				pRGBA[k + 1] = quantize(G);
-				pRGBA[k + 2] = quantize(B);
-				pRGBA[k + 3] = quantize(A[i]);
-			}
+			pRGBA[k + 0] = static_cast<uint8_t>(std::clamp<int16_t>(r, 0, 255));
+			pRGBA[k + 1] = static_cast<uint8_t>(std::clamp<int16_t>(g, 0, 255));
+			pRGBA[k + 2] = static_cast<uint8_t>(std::clamp<int16_t>(b, 0, 255));
+			pRGBA[k + 3] = A[i];
 		}
 
 		m_ms = toMS(clock::now());
@@ -1144,11 +1164,11 @@ namespace PixelStudio
 		res.logs.push_back({TextCode::Metrics, {"RGBA < YUV", m_ms}});
 		#endif
 
-		m_bufferView.stamp = m_images[m_IDX].stamp;
-		m_bufferView.width = m_images[m_IDX].w;
+		m_bufferView.stamp	= m_images[m_IDX].stamp;
+		m_bufferView.width	= m_images[m_IDX].w;
 		m_bufferView.height = m_images[m_IDX].h;
-		m_bufferView.chanCode = m_images[m_IDX].chan;
-		m_bufferView.RGBA = std::span<const uint8_t>(m_RGBA.data(), (size << 2));								// updating the RGBA buffer view
+		m_bufferView.chan	= m_images[m_IDX].chan;
+		m_bufferView.RGBA	= std::span<const uint8_t>(m_RGBA.data(), (size << 2));								// updating the RGBA buffer view
 
 		res.success = true;
 		return res;
@@ -1167,8 +1187,8 @@ namespace PixelStudio
 		res.success = false;
 
 		m_t_start = clock::now();
-		const size_t size	= m_images[m_IDX].Y.size();
-		float* __restrict Y = m_images[m_IDX].Y.data();
+		const size_t size	  = m_images[m_IDX].Y.size();
+		uint8_t* __restrict Y = m_images[m_IDX].Y.data();
 
 		double PDF[256] = {0.0};
 		m_CDF = {};
@@ -1180,7 +1200,8 @@ namespace PixelStudio
 		#pragma omp parallel for proc_bind(close) schedule(guided, m_CHUNK_SIZE) reduction(+:PDF[:256])
 		#endif
 		for (size_t k = 0; k < size; ++k)
-			PDF[quantize(Y[k])] += 1.0;																			// histogramm with 1.0 standard bins (to TEST)
+			PDF[Y[k]] += 1.0;																					// histogramm /w 1.0 standard bins (each appearance)
+		//	PDF[quantize(Y[k])] += 1.0;																			// ******* earlier YUVA variant !!! *******
 
 		m_ms = toMS(clock::now());
 
@@ -1198,9 +1219,9 @@ namespace PixelStudio
 
 		while (++i != 0)																						// terminates when i == 0 (auto reset i for reuse)
 		{
-			PDF[i] *= INV_SIZE;
-			sum += PDF[i];
-		}																										// now the historgram is a PDF (sum up for check if 1.0)
+			PDF[i] *= INV_SIZE;																					// norming					-> PDF[i] / N
+			sum += PDF[i];																						// summing up for assertion -> ∑ PDF[i] == 1.0
+		}
 
 		// ==================================================================== computing CDF ========================================================================
 		m_CDF[i] = PDF[i];																						// reuse of i, which was automatically reset to 0
@@ -1233,8 +1254,8 @@ namespace PixelStudio
 
 		m_padImg.resize(pad_W * pad_H);
 
-		const float* __restrict Y = m_images[m_IDX].Y.data();
-		float*		 __restrict P = m_padImg.data();
+		uint8_t* __restrict Y = m_images[m_IDX].Y.data();
+		uint8_t* __restrict P = m_padImg.data();
 
 		// =========================================================== constructing `m_padImg` 1D vector =============================================================
 
@@ -1246,30 +1267,30 @@ namespace PixelStudio
 			const size_t src_offset = y * m_W;
 			const size_t dst_offset = (y + fRad) * pad_W;
 
-			const float* src_row = Y + src_offset;
-			float* dst_row = P + dst_offset;
+			const uint8_t* src_row = Y + src_offset;
+			uint8_t* dst_row = P + dst_offset;
 
 			std::fill_n(dst_row, fRad, src_row[0]);
-			std::memcpy(dst_row + fRad, src_row, m_W * sizeof(float));
+			std::memcpy(dst_row + fRad, src_row, m_W * sizeof(uint8_t));
 			std::fill_n(dst_row + fRad + m_W, fRad, src_row[m_W - 1]);
 		}
 
 		// --------------------------  UPPER PADDING  --------------------------
 
-		const float* first_valid_row = P + (fRad * pad_W);
+		const uint8_t* first_valid_row = P + (fRad * pad_W);
 		for (size_t y = 0; y < fRad; ++y)
 		{
-			float* dst_top_row = P + (y * pad_W);
-			std::memcpy(dst_top_row, first_valid_row, pad_W * sizeof(float));
+			uint8_t* dst_top_row = P + (y * pad_W);
+			std::memcpy(dst_top_row, first_valid_row, pad_W * sizeof(uint8_t));
 		}
 
 		// --------------------------  LOWER PADDING  --------------------------
 
-		const float* last_valid_row = P + ((fRad + m_H - 1) * pad_W);
+		const uint8_t* last_valid_row = P + ((fRad + m_H - 1) * pad_W);
 		for (size_t r = 0; r < fRad; ++r)
 		{
-			float* dst_bottom_row = P + ((fRad + m_H + r) * pad_W);
-			std::memcpy(dst_bottom_row, last_valid_row, pad_W * sizeof(float));
+			uint8_t* dst_bottom_row = P + ((fRad + m_H + r) * pad_W);
+			std::memcpy(dst_bottom_row, last_valid_row, pad_W * sizeof(uint8_t));
 		}
 
 		m_PADstamp = m_images[m_IDX].stamp;																		// assign PADstamp /w the image stamp to which it belongs
@@ -1309,41 +1330,30 @@ namespace PixelStudio
 				size_t dw = cn + pad_W;
 
 				// load Y values directly (L1 cache hit)
-				float p00 = m_padImg[up - 1];	float p01 = m_padImg[up];	float p02 = m_padImg[up + 1];
-				float p10 = m_padImg[cn - 1];								float p12 = m_padImg[cn + 1];
-				float p20 = m_padImg[dw - 1];	float p21 = m_padImg[dw];	float p22 = m_padImg[dw + 1];
+				int p00 = m_padImg[up - 1];	int p01 = m_padImg[up];	int p02 = m_padImg[up + 1];
+				int p10 = m_padImg[cn - 1];							int p12 = m_padImg[cn + 1];
+				int p20 = m_padImg[dw - 1];	int p21 = m_padImg[dw];	int p22 = m_padImg[dw + 1];
 
 				// convolution /w SobelX
-				float convX =
-					(-1.0f * p00) + (1.0f * p02) +
-					(-2.0f * p10) + (2.0f * p12) +
-					(-1.0f * p20) + (1.0f * p22);
+				int convX = -p00 + p02 + (-p10 << 1) + (p12 << 1) + -p20 + p22;
 
 				// convolution /w SobelY
-				float convY =
-					(-1.0f * p00) + (-2.0f * p01) + (-1.0f * p02) +
-					(+1.0f * p20) + (+2.0f * p21) + (+1.0f * p22);
+				int convY = -p00 + (-p01 << 1) + -p02 + p20 + (p21 << 1) + p22;
 
 				size_t k = y * m_W + x;
 
-				// the RAW derivatives
-				m_harris.Ix[k] = convX;
-				m_harris.Iy[k] = convY;
+				// the RAW derivatives: scale to [-4.0, +4.0] for numerically clean squares in float
+				float fx = static_cast<float>(convX) * INV_255;
+				float fy = static_cast<float>(convY) * INV_255;
 
 				// quadratic terms for the structure tensor M
-				m_harris.Ixx[k] = convX * convX;
-				m_harris.Iyy[k] = convY * convY;
-				m_harris.Ixy[k] = convX * convY;
+				m_harris.Ixx[k] = fx * fx;
+				m_harris.Iyy[k] = fy * fy;
+				m_harris.Ixy[k] = fx * fy;
 
-				// when Orientation/Angles are in interest (maybe in future updates)
-				// -----------------------------------------------------------------
-				// m_harris.Magnitude[k] = std::sqrt(convX * convX + convY * convY);
-				// m_harris.Angle[k]	  = std::atan2(convY, convX);
-				// -----------------------------------------------------------------
-
-				// RAW data served their purpose -> in-place conversion for display!
-				m_harris.Ix[k] = std::clamp(convX + 0.5f, 0.0f, 1.0f);
-				m_harris.Iy[k] = std::clamp(convY + 0.5f, 0.0f, 1.0f);
+				// RAW data served their purpose -> in-place normalization for display (GL_R32F expects 0.0 .. 1.0)
+				m_harris.I_x[k] = std::clamp(fx + 0.5f, 0.0f, 1.0f);
+				m_harris.I_y[k] = std::clamp(fy + 0.5f, 0.0f, 1.0f);
 			}
 		}
 		// ===========================================================================================================================================================
@@ -1438,8 +1448,6 @@ namespace PixelStudio
 					float g5 = (src[r2 + x2]);																	// Group 5: 1 center (weight W5)
 
 					return (g0 * W0) + (g1 * W1) + (g2 * W2) + (g3 * W3) + (g4 * W4) + (g5 * W5);				// after ALL additions -> only 6 multiplications!
-					// clang-format on
-					// vcFormat-format on
 				};
 
 				float sumIxx = calcSymmetricVal(m_harris.Ixx);
@@ -1452,13 +1460,10 @@ namespace PixelStudio
 
 				m_harris.R[curr_i] = det - k_factor * (trace * trace);								// R = det(M) - k * (trace(M))^2 ==> det(M) - k * (trace * trace)
 
-				// write back final smoothed tensor values
+				// write back final smoothed tensor vals to temp vectors --> calcSymmetricVal(..) runs on original vectors !!! -- (clamping [0.0, 1.0] for display)
 				tmpIxx[curr_i] = std::clamp(sumIxx + 0.5f, 0.0f, 1.0f);
 				tmpIyy[curr_i] = std::clamp(sumIyy + 0.5f, 0.0f, 1.0f);
 				tmpIxy[curr_i] = std::clamp(sumIxy + 0.5f, 0.0f, 1.0f);
-				// tmpIxx[curr_i] = sumIxx;
-				// tmpIyy[curr_i] = sumIyy;
-				// tmpIxy[curr_i] = sumIxy;
 			}
 		}
 
@@ -1480,11 +1485,11 @@ namespace PixelStudio
 	}
 
 	/**
-	 * @brief Computes the convolution of Ixx, Iyy and Ixy with the Gauss 5x5 1D filter in X and Y direction of the filter, in separate loops. The Harris Response R values
-	 * are also calculated of the results at the end of each loop.
+	 * @brief Computes the convolution of Ixx, Iyy and Ixy with the Gauss 5x5 1D filter in X and Y directions in separate loops. The Harris Response R values are also
+	 * calculated by the results at the end of each loop.
 	 * @note Incoming value is backed up by ImGui slider ranges and mustn't checked. ImGuiSliderFlags_NoInput are used !!!
 	 * @param res a container within the information pipeline to which messages can be appended at the end
-	 * @param k_factor an empirical determined sensitivity parameter [0.04 - 0.06]. Lower: can detect false corners, Larger: risks missing valid corners
+	 * @param k_factor an empirical determined sensitivity parameter (sweetspot = [0.04 - 0.06]). Lower: can detect false corners, Larger: risks missing valid corners
 	 * @return
 	 */
 	Result ImageProcessor::computeTensorM_2x1D(Result& res, float k_factor)
@@ -1562,6 +1567,7 @@ namespace PixelStudio
 
 					float weight = GAUSS_1D.kernel[ky + 2];
 
+					// temp vectors are fully run in X direction !!!
 					sumIxx += tmpIxx[sampleIdx] * weight;
 					sumIyy += tmpIyy[sampleIdx] * weight;
 					sumIxy += tmpIxy[sampleIdx] * weight;
@@ -1573,20 +1579,13 @@ namespace PixelStudio
 
 				m_harris.R[curr_i] = det - k_factor * (trace * trace);								// R = det(M) - k * (trace(M))^2 ==> det(M) - k * (trace * trace)
 
-				// write back final smoothed tensor values
+
+				// write back final smoothed tensor vals to original vectors --> X loop is accomplished (runned on orig) !!! -- (clamping [0.0, 1.0] for display)
 				m_harris.Ixx[curr_i] = std::clamp(sumIxx + 0.5f, 0.0f, 1.0f);
 				m_harris.Iyy[curr_i] = std::clamp(sumIyy + 0.5f, 0.0f, 1.0f);
 				m_harris.Ixy[curr_i] = std::clamp(sumIxy + 0.5f, 0.0f, 1.0f);
-				// m_harris.Ixx[curr_i] = sumIxx;
-				// m_harris.Iyy[curr_i] = sumIyy;
-				// m_harris.Ixy[curr_i] = sumIxy;
 			}
 		}
-
-		// // move the temporary result to the original buffers
-		// m_harris.Ixx = std::move(tmpIxx);
-		// m_harris.Iyy = std::move(tmpIyy);
-		// m_harris.Ixy = std::move(tmpIxy);
 
 		m_ms = toMS(clock::now());
 
@@ -1622,20 +1621,19 @@ namespace PixelStudio
 	// 	// ================================ the convolution of Tensor M =================================
 	// 	#ifdef PARALLEL_RUN
 	// 	#pragma omp parallel for default(none) shared(W, m_W, H, k_factor, GAUSS_5, tmpIxx, tmpIyy, tmpIxy)\
-	// 	proc_bind(close) schedule(guided, m_CHUNK_SIZE)
+	// 			proc_bind(close) schedule(guided, m_CHUNK_SIZE)
 	// 	#endif
 	// 	for (int y = 0; y < H; ++y)
 	// 	{
 	// 		for (int x = 0; x < W; ++x)
 	// 		{
-	// 			// SAUBERE INDEX-BERECHNUNG (Kein Akkumulieren!)
 	// 			size_t curr_i = m_W * y + x;
 
 	// 			float sumIxx = 0.0f;
 	// 			float sumIyy = 0.0f;
 	// 			float sumIxy = 0.0f;
 
-	// 			// 5x5 Gauß-Kernel-Schleife
+	// 			// 5x5 Gaussian kernel loop
 	// 			for (int ky = -2; ky <= 2; ++ky)
 	// 			{
 	// 				int sampleY = std::clamp(y + ky, 0, H - 1);
@@ -1646,7 +1644,7 @@ namespace PixelStudio
 
 	// 					size_t sampleIdx = m_W * sampleY + sampleX;
 
-	// 					// GAUSS_5 flach indizieren: (ky + 2) * 5 + (kx + 2)
+	// 					// GAUSS_5 flat indexing
 	// 					float weight = GAUSS_5.kernel[(ky + 2) * 5 + (kx + 2)];
 
 	// 					sumIxx += m_harris.Ixx[sampleIdx] * weight;
@@ -1655,7 +1653,7 @@ namespace PixelStudio
 	// 				}
 	// 			}
 
-	// 			// Harris Response R berechnen
+	// 			// Calculate Harris Response R
 	// 			float det   = (sumIxx * sumIyy) - (sumIxy * sumIxy);
 	// 			float trace = sumIxx + sumIyy;
 
@@ -1679,7 +1677,8 @@ namespace PixelStudio
 	// 	res.logs.push_back({TextCode::Metrics, {"gaussian 5", m_ms}});
 	// 	#endif
 
-	// 	return toRGBA(res);
+	// 	res.success = true;
+	// 	return res;
 	// }
 
 	/**
@@ -1692,8 +1691,8 @@ namespace PixelStudio
 	{
 		res.success = false;
 
-		const int W = static_cast<int>(m_W);
-		const int H = static_cast<int>(m_H);
+		const int W = m_images[m_IDX].w;																		// applyHarrisXY() / getKeypoints() can run only on curr image
+		const int H = m_images[m_IDX].h;																		// also m_W & m_H are surely set of this image
 
 		m_t_start = clock::now();
 
@@ -1794,15 +1793,13 @@ namespace PixelStudio
 	 */
 	std::vector<uint8_t> ImageProcessor::create_RGB()
 	{
-		// No Alpha0 quick exit (called internally)
-
-		const size_t TOTAL_PXLS = (static_cast<size_t>(m_W) * m_H);
+		const size_t TOTAL_PXLS = (static_cast<size_t>(m_W) * m_H);												// load/select image must happen before -> m_W & m_H is correct !
 		std::vector<uint8_t> rgb(TOTAL_PXLS * 3);
 
-		for (size_t i = 0; i < TOTAL_PXLS; ++i)
+		for (size_t i = 0; i < TOTAL_PXLS; ++i)																	// iterating other all Pixels, but Alpha channel is ignored !
 		{
-			size_t j = i * 3;
-			size_t k = i << 2;
+			size_t j = i * 3;																					// j pointing on RGB	0,..., 3,..., 6,...
+			size_t k = i << 2;																					// k pointing on RGBA	0,..., 4,..., 8,...
 
 			rgb[j + 0] = m_RGBA[k + 0];	// R
 			rgb[j + 1] = m_RGBA[k + 1];	// G

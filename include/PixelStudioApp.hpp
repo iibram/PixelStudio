@@ -22,14 +22,16 @@
 // ==============================================================
 // OpenGL Extension Enums for Memory Queries
 // ==============================================================
-// NVIDIA
+// NOLINTBEGIN(cppcoreguidelines-macro-usage)
+// ---- NVIDIA ----
 #ifndef GL_NVX_gpu_memory_info
 #define GL_GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX 0x9049
 #endif
-// AMD/ATI
+// --- AMD / ATI ---
 #ifndef GL_VBO_FREE_MEMORY_ATI
 #define GL_VBO_FREE_MEMORY_ATI 0x87FB
 #endif
+// NOLINTEND(cppcoreguidelines-macro-usage)
 
 
 // forward declarations
@@ -189,9 +191,10 @@ namespace PixelStudio
 		bool m_firstFrame		= true;										// is the first frame of ImGui shown? (stutter elimination at start)
 		bool m_popupToShow		= false;									// is there any pending popup?
 		bool m_showConfigModal	= false;									// is the Config Modal to show?
+		bool m_isModalAnimating	= false;									// is the modal dimming currently running?
 		bool m_themeChanged		= false;									// is there a pending theme change request?
 		bool m_isLogOpen		= false;									// is Performance Log open?
-		bool m_isModalAnimating	= false;									// is the modal dimming currently running?
+		bool m_isBufferUpdated	= false;									// is the current image successfully manipulated -> is buffer updated?
 
 		UI::ThemeMode m_currTheme = UI::ThemeMode::DARK;					// current selected theme mode
 		UI::ThemeMode m_nextTheme = UI::ThemeMode::DARK;					// next theme mode to switch to
@@ -223,9 +226,10 @@ namespace PixelStudio
 		void setNextLog(const Result& res);
 		void updateBuffer(const ImageBufferView& buff);
 		void setNextPopup(const Result& res, TextCode header, TextCode footer);
+		void setAlphaSetting();
 
 		void queryGPUInfo();
 		void updateAvailVRAM(VRAM access_mode, int w = 0, int h = 0);
-		[[nodiscard]] constexpr float toMB(const int w, const int h) noexcept;
+		[[nodiscard]] constexpr float toMB(const int w, const int h, const int factor) noexcept;
 	};
 }
