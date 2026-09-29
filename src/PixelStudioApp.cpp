@@ -618,9 +618,19 @@ namespace PixelStudio
 			// ====================================================================================================
 			if (ImGui::CollapsingHeader("Global Manipulations"))
 			{
-				// static slider min max vals
+				// static slider ranges for posterize
 				static uint8_t expMin = 1;
 				static uint8_t expMax = 7;
+
+				// ================================================================================
+				// Local lambda helper: Dispatches `Result` to log & updates GPU buffer on success.
+				// - Enforces DRY with zero overhead (inlined by compiler, no copy via const ref) -
+				// ================================================================================
+				auto dispatchAndLog = [&](const Result& res) {
+					setNextLog(res);
+					if (res.success)
+						updateBuffer(m_processor.getImageBufferView());
+				};
 
 				ImGuiTreeNodeFlags treeFlags = ImGuiTreeNodeFlags_NoTreePushOnOpen | ImGuiTreeNodeFlags_SpanAvailWidth;
 
@@ -636,12 +646,8 @@ namespace PixelStudio
 					applyBtnDim  = ImVec2(ImGui::GetContentRegionAvail().x, 0.0f);								// set applyBtnDim dynamically (right end) (*)
 
 					if (ImGui::Button("apply##AddIntensity", applyBtnDim))
-					{
-						Result res = m_processor.addIntensity(s.addIntensity);
-						setNextLog(res);
-						if (res.success)
-							updateBuffer(m_processor.getImageBufferView());
-					}
+						dispatchAndLog(m_processor.addIntensity(s.addIntensity));
+
 					ImGui::Spacing();
 				}
 
@@ -655,12 +661,23 @@ namespace PixelStudio
 
 					ImGui::SameLine();
 					if (ImGui::Button("apply##ScaleIntensity", applyBtnDim))
-					{
-						Result res = m_processor.scaleIntensity(s.sclIntensity);
-						setNextLog(res);
-						if (res.success)
-							updateBuffer(m_processor.getImageBufferView());
-					}
+						dispatchAndLog(m_processor.scaleIntensity(s.sclIntensity));
+
+					ImGui::Spacing();
+				}
+
+				// ----------------------------------  SET SATURATION  ------------------------------------
+				if (ImGui::TreeNodeEx("Saturation##Node", treeFlags))
+				{
+					ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, UI::Line);
+					ImGui::SetNextItemWidth(UI::SliderA_W);
+					ImGui::SliderFloat("##SaturationSlider", &s.saturation, -1.0f, 1.0f, "%.1f", noInput);
+					ImGui::PopStyleVar();
+
+					ImGui::SameLine();
+					if (ImGui::Button("apply##Saturation", applyBtnDim))
+						dispatchAndLog(m_processor.setSaturation(s.saturation));
+
 					ImGui::Spacing();
 				}
 
@@ -674,19 +691,14 @@ namespace PixelStudio
 
 					ImGui::SameLine();
 					if (ImGui::Button("apply##Contrast", applyBtnDim))
-					{
-						Result res = m_processor.setContrast(s.contrast);
-						setNextLog(res);
-						if (res.success)
-							updateBuffer(m_processor.getImageBufferView());
-					}
+						dispatchAndLog(m_processor.setContrast(s.contrast));
+
 					ImGui::Spacing();
 				}
 
 				// -------------------------------------  POSTERIZE  --------------------------------------
 				if (ImGui::TreeNodeEx("Posterize##Node", treeFlags))
 				{
-					//ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
 					ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, UI::Line);
 					ImGui::SetNextItemWidth(UI::SliderA_W);
 					ImGui::SliderScalar("##PosterizeSlider", ImGuiDataType_U8, &s.exp, &expMin, &expMax, "%u", noInput);
@@ -694,12 +706,8 @@ namespace PixelStudio
 
 					ImGui::SameLine();
 					if (ImGui::Button("apply##Posterize", applyBtnDim))
-					{
-						Result res = m_processor.posterize(s.exp);
-						setNextLog(res);
-						if (res.success)
-							updateBuffer(m_processor.getImageBufferView());
-					}
+						dispatchAndLog(m_processor.posterize(s.exp));
+
 					ImGui::Spacing();
 				}
 
@@ -713,12 +721,8 @@ namespace PixelStudio
 
 					ImGui::SameLine();
 					if (ImGui::Button("apply##SetAlpha", applyBtnDim))
-					{
-						Result res = m_processor.setAlpha(s.alpha);
-						setNextLog(res);
-						if (res.success)
-							updateBuffer(m_processor.getImageBufferView());
-					}
+						dispatchAndLog(m_processor.setAlpha(s.alpha));
+
 					ImGui::Spacing();
 				}
 
@@ -790,22 +794,14 @@ namespace PixelStudio
 				// -------------------------------------  NEGATIVE  ---------------------------------------
 				if (ImGui::Button("Invert (Negative)", fullBtnDim))
 				{
-					Result res = m_processor.toNegative();
-					setNextLog(res);
-					if (res.success)
-						updateBuffer(m_processor.getImageBufferView());
-
+					dispatchAndLog(m_processor.toNegative());
 					ImGui::Spacing();
 				}
 
 				// -----------------------------------  AUTO HISTOGRAM  -----------------------------------
 				if (ImGui::Button("Auto Histogram Equalization", fullBtnDim))
 				{
-					Result res = m_processor.applyHistogramEqualization();
-					setNextLog(res);
-					if (res.success)
-						updateBuffer(m_processor.getImageBufferView());
-
+					dispatchAndLog(m_processor.applyHistogramEqualization());
 					ImGui::Spacing();
 				}
 
@@ -908,7 +904,7 @@ namespace PixelStudio
 					ImGui::Text("-Factor");
 
 					// quick new keypoint calculation when Harris active
-					ImGui::SliderFloat("threshold", &s.harr_Thresh, 0.05f, 10.0f, "%.2f", noInput | log);
+					ImGui::SliderFloat("threshold", &s.harr_Thresh, 0.05f, 8.0f, "%.2f", noInput | log);
 					if (isInspectionActive && ImGui::IsItemDeactivatedAfterEdit())
 					{
 						Result res;

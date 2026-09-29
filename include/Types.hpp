@@ -157,34 +157,35 @@ namespace PixelStudio
 		IP_Delete_IDX,											//  25
 		IP_Select_IDX,											//  26
 		IP_Skip_Intensity,										//  27
-		IP_Skip_Contrast_NoOp,									//  28
-		IP_Pixel_Diff,											//  29
-		IP_Skip_Padding,										//  30
-		IP_Skip_PixelComp_Size,									//  31
-		IP_Skip_PixelComp_NotAvailable,							//  32
-		IP_Skip_Alpha0,											//  33
-		IP_PDFsum_CDF255,										//  34
-		IP_HistoEqual_CDF_Failed,								//  35
-		IP_AutoSegm_CDF_Failed,									//  36
-		IP_AutoSegm_BHT_Failed,									//  37
-		IP_Save_toRGBA_Failed,									//  38
-		IP_Posterize_toRGBA_Failed,								//  39
-		IP_Image_Compare_toRGBA_Failed,							//  40
-		IP_Convolution_Padding_Failed,							//  41
-		IP_Convolution_Sobel_Failed,							//  42
-		IP_Convolution_Gauss_Failed,							//  43
-		IP_Alpha_OOR,											//  44
+		IP_Skip_Saturation,										//  28
+		IP_Skip_Contrast_NoOp,									//  29
+		IP_Pixel_Diff,											//  30
+		IP_Skip_Padding,										//  31
+		IP_Skip_PixelComp_Size,									//  32
+		IP_Skip_PixelComp_NotAvailable,							//  33
+		IP_Skip_Alpha0,											//  34
+		IP_PDFsum_CDF255,										//  35
+		IP_HistoEqual_CDF_Failed,								//  36
+		IP_AutoSegm_CDF_Failed,									//  37
+		IP_AutoSegm_BHT_Failed,									//  38
+		IP_Save_toRGBA_Failed,									//  39
+		IP_Posterize_toRGBA_Failed,								//  40
+		IP_Image_Compare_toRGBA_Failed,							//  41
+		IP_Convolution_Padding_Failed,							//  42
+		IP_Convolution_Sobel_Failed,							//  43
+		IP_Convolution_Gauss_Failed,							//  44
+		IP_Alpha_OOR,											//  45
 		// ------------------ Metrics ------------------
-		Metrics,												//  45
-		Metrics_Parallel,										//  46
-		Metrics_Comp,											//  47
+		Metrics,												//  46
+		Metrics_Parallel,										//  47
+		Metrics_Comp,											//  48
 		// ------------------ Popups -------------------
-		SysDiag_Header,											//  48
-		SysDiag_Footer,											//  59
-		ErrMsg_Header,											//  50
-		ErrMsg_Footer,											//  51
+		SysDiag_Header,											//  49
+		SysDiag_Footer,											//  50
+		ErrMsg_Header,											//  51
+		ErrMsg_Footer,											//  52
 		// ---------------------------------------------
-		COUNT													//  52 = size of the enum
+		COUNT													//  53 = size of the enum
 	};
 
 	/**
@@ -245,35 +246,36 @@ namespace PixelStudio
 		"saving image ->  -- FAILED! --\npath : \"{}\"\nerror: {}\n",					//  24
 		"> del image IDX: {:4}   -- SUCCESS! --\n",										//  25
 		"> sel image IDX: {:4}\n",														//  26
-		"intensity manip. skipped!\n(value must be within [-1.0, 1.0] \\{0})\n",		//  27
-		"contrast manip. skipped!\n(k = 1 changes nothing)\n",							//  28
-		"num of \u0394 pixels: {:9}\n",													//  39
-		"padding skipped! (image -> unchanged!)\n",										//  30
-		"compare images skipped!\n(referred image has a different size)\n",				//  31
-		"compare images skipped!\n(referred image is not available)\n",					//  32
-		"skipped the operation!\n(the image is fully transparent)\n",					//  33
-		"sum PDF: {:8.6f} | CDF[255]: {:8.6f}\n",										//  34
-		"aborted HistoEqual -> CDF failed!\n",											//  35
-		"aborted autoSegm -> CDF failed!\n",											//  36
-		"aborted autoSegm -> BHT failed!\n",											//  37
-		"aborted save image -> toRGBA() failed!\n",										//  38
-		"aborted posterize -> toRGBA() failed!\n",										//  39
-		"aborted comparison -> toRGBA() failed!\n",										//  40
-		"aborted convolution -> padImg failed!\n",										//  41
-		"aborted convolution -> Sobel failed!\n",										//  42
-		"aborted convolution -> Gauss failed!\n",										//  43
-		"Alpha manip. skipped!\n(value must be within [0.0, 1.0])\n",					//  44
+		"intensity manip. skipped!\n(factor of 0.0 changes nothing)\n",					//  27
+		"saturation manip. skipped!\n(factor of 0.0 changes nothing)\n",				//  28
+		"contrast manip. skipped!\n(k = 1 changes nothing)\n",							//  29
+		"num of \u0394 pixels: {:9}\n",													//  30
+		"padding skipped! (image -> unchanged!)\n",										//  31
+		"compare images skipped!\n(referred image has a different size)\n",				//  32
+		"compare images skipped!\n(referred image is not available)\n",					//  33
+		"skipped the operation!\n(the image is fully transparent)\n",					//  34
+		"sum PDF: {:8.6f} | CDF[255]: {:8.6f}\n",										//  35
+		"aborted HistoEqual -> CDF failed!\n",											//  36
+		"aborted autoSegm -> CDF failed!\n",											//  37
+		"aborted autoSegm -> BHT failed!\n",											//  38
+		"aborted save image -> toRGBA() failed!\n",										//  39
+		"aborted posterize -> toRGBA() failed!\n",										//  40
+		"aborted comparison -> toRGBA() failed!\n",										//  41
+		"aborted convolution -> padImg failed!\n",										//  42
+		"aborted convolution -> Sobel failed!\n",										//  43
+		"aborted convolution -> Gauss failed!\n",										//  44
+		"Alpha manip. skipped!\n(value must be within [0.0, 1.0])\n",					//  45
 		// ----------------------------- Metrics -------------------------------
-		"\u0394t ({}): {:7.2f} ms\n", 													//  45
-		"\u0394t ({}): {:7.2f} ms (parallel)\n",										//  46
-		"\u0394t (comp {:02}:{:02}): {:7.2f} ms\n",										//  47
+		"\u0394t ({}): {:7.2f} ms\n", 													//  46
+		"\u0394t ({}): {:7.2f} ms (parallel)\n",										//  47
+		"\u0394t (comp {:02}:{:02}): {:7.2f} ms\n",										//  48
 		// -------------------------- Popup Windows ----------------------------
-		"System Diagnostics",															//  48
-		"Start Pixel Studio",															//  49
-		"Error Message",																//  50
-		"OK"																			//  51
+		"System Diagnostics",															//  49
+		"Start Pixel Studio",															//  50
+		"Error Message",																//  51
+		"OK"																			//  52
 		// ---------------------------------------------------------------------
-		// COUNT																		//  52
+		// COUNT																		//  53
 	};
 
 	/**
@@ -285,14 +287,14 @@ namespace PixelStudio
 
 	/**
 	 * @brief Helper to get the identified text comfortable and directly as string
-	 * @param code `TextCode` enum unit8_t 0 to 51
+	 * @param code `TextCode` enum unit8_t 0 to 52
 	 * @return the identified text as a `std::string`.
 	 */
 	constexpr std::string getAsString(TextCode code) { return static_cast<std::string>(getText(code)); }
 
 	/**
 	 * @brief Helper to format the passed args accordingly to the identified text by the `TextCode` enum.
-	 * @param code `TextCode` enum unit8_t 0 to 51
+	 * @param code `TextCode` enum unit8_t 0 to 52
 	 * @param args alias `LogArg` -> a variant of int, double or string
 	 * @return the proper formatted text resulting by the `TextCode` and the parameters
 	 */

@@ -79,7 +79,7 @@ Pixel Studio queries hardware topologies dynamically at initialization:
 
 ### ⚡ 7. Dynamic Frame Pacing & Modal-Aware Event Loop
 
-PixelStudio combines power-efficiency with buttery-smooth UI animations through an adaptive event-driven render loop:
+Pixel Studio combines power-efficiency with buttery-smooth UI animations through an adaptive event-driven render loop:
 
 * **Resource-Conscious Idle State:** When the user is idle, the application suspends redundant rendering frames via `glfwWaitEvents()`, dropping CPU/GPU usage to virtually 0%.
 * **Automatic Animation Bypass:** To prevent frame stuttering during modal interactions, popups, and dialog transitions, the engine continuously monitors `GImGui->DimBgRatio`.
@@ -103,7 +103,7 @@ PixelStudio combines power-efficiency with buttery-smooth UI animations through 
 | Vertical Gradient Matrix ($I_y$) | Architecture Feature Density ($I_{yy}$) |
 | :---: | :---: |
 | ![Sobel Iy Direction](res/showcases/sobelY.png) | ![Building Keypoint Density](res/showcases/gaussianYY.png) |
-| Real-time $I_y$ spatial gradient visualization via OpenMP-accelerated Sobel convolution. | Stress-testing on complex real-world data ($3648 \times 2365$ px) detecting 7,400+ keypoints with custom color overlays. |
+| Real-time $I_y$ spatial gradient visualization via OpenMP-accelerated Sobel convolution. | Stress-testing on complex real-world data ($3648 \times 2365$ px) detecting 7,300+ keypoints with custom color overlays. |
 
 ---
 
@@ -115,18 +115,17 @@ PixelStudio combines power-efficiency with buttery-smooth UI animations through 
 </div>
 
 ---
-
 ## 🔬 Performance Benchmarks
 
 *Evaluated on a **48 Megapixel (8000 × 6000)** image payload:*
 
 | Pipeline Stage | Processing Time ($\Delta t$) | Description |
 | :--- | :--- | :--- |
-| **Sobel Gradient Pass** | ` ~55.24 ms` (parallel) | Dual-axis gradient calculation ($I_x, I_y$) |
-| **Separable Gaussian (5x1D)** | `~141.88 ms` (parallel) | Horizontal/Vertical smoothing pass ($I_{xx}, I_{yy}, I_{xy}$) |
-| **Keypoint Extraction (NMS)** | ` ~12.08 ms` (parallel) | Candidate filtering (**249,679 points @ $t=0.05$**) |
-| **Total Pipeline Rebuild** | `~220 ms` (parallel) | Full end-to-end execution on 48MP input |
-
+| **Border Extension (Padding)** | ` ~3.33 ms` | Boundary padding by filter radius $r$ to prevent edge artifacts |
+| **Sobel Gradient Pass** | ` ~51 ms` (parallel) | Dual-axis spatial gradient calculation ($I_x, I_y$) |
+| **Separable Gaussian (5×1D)** | `~140 ms` (parallel) | Multi-channel horizontal/vertical smoothing pass ($I_{xx}, I_{yy}, I_{xy}$) |
+| **Keypoint Extraction (NMS)** | ` ~11 ms` (parallel) | Non-Maximum Suppression (**246,652 points @ $k=0.04$, $t=0.05$**) |
+| **Total Pipeline Execution** | `~220 ms` (parallel) | Full end-to-end execution on 48MP input |
 ---
 
 ## 🗺️ Roadmap & Future Enhancements

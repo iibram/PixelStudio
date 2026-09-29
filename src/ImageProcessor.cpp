@@ -245,7 +245,7 @@ namespace PixelStudio
 		const uint32_t size	  = m_images[m_IDX].Y.size();
 		uint8_t* __restrict Y = m_images[m_IDX].Y.data();
 
-		const int offset = static_cast<int>(value * 255.0f);
+		const int offset = static_cast<int>(std::lround(value * 255.0f));
 
 		uint8_t lut[256];
 		for (int i = 0; i < 256; ++i)
@@ -263,54 +263,89 @@ namespace PixelStudio
 	}
 
 	/**
-	 * @brief Manipulates the overall intensity (Y [0, 1]) of the selected image by percentually scaling the passed factor [-1, 1].
+	 * @brief Manipulates the overall intensity (Y [0, 255]) of the selected image by percentually scaling the passed factor [-1.0, 1.0].
 	 * @note Incoming values are backed up by ImGui slider ranges and mustn't checked. ImGuiSliderFlags_NoInput are used !!!
-	 * @param factor the floating point factor [-1, 1] to manipute the intesity by scaling
+	 * @param factor the floating point factor [-1.0, 1.0] to manipute the intesity by scaling
 	 * @return `Result` {success, logs}
 	 */
 	Result ImageProcessor::scaleIntensity(float factor)
 	{
 		if (m_images[m_IDX].chan == 0) return Result {.logs = {{TextCode::IP_Skip_Alpha0, {}}}};				// skip manip. of fully transparent images
 
-		if (factor == 0.0f) return Result {.logs = {{TextCode::IP_Skip_Intensity, {}}}};						// => no any change in intenisty (ImGui slider ranges are safe)
+		if (factor == 0.0f) return Result {.logs = {{TextCode::IP_Skip_Intensity, {}}}};						// => no any change in intenisty
 
 		m_t_start = clock::now();
 
 		const uint32_t size	   = m_images[m_IDX].Y.size();
 		uint8_t* __restrict Y  = m_images[m_IDX].Y.data();
-		int16_t* __restrict Cg = m_images[m_IDX].Cg.data();
-		int16_t* __restrict Co = m_images[m_IDX].Co.data();
 
 		const float mult = 1.0f + factor;
-
-		// for (uint32_t i = 0; i < size; ++i)																	// ******* earlier YUVA variant !!! *******
-		// 	Y[i] = std::min(Y[i] * mult, 1.0f);																	// ******* earlier YUVA variant !!! *******
-		// 	Y[i] = std::min(Y[i] * mult, 255);
 
 		uint8_t lutY[256];																						// LUT for Y (256 Bytes)
 		for (int i = 0; i < 256; ++i)
 		{
-			int val = static_cast<int>(std::round(static_cast<float>(i) * mult));
-			lutY[i] = static_cast<uint8_t>(std::clamp(val, 0, 255));
-		}
-
-		int16_t lutChroma[511];																					// Combined LUT for Cg & Co (-255..255, 1024 Bytes)
-		for (int i = -255; i < 256; ++i)
-		{
-			int val = static_cast<int>(std::round(static_cast<float>(i) * mult));
-			lutChroma[i + 255] = static_cast<int16_t>(std::clamp(val, -255, 255));
+			const float val = std::clamp(static_cast<float>(i) * mult, 0.0f, 255.0f);
+			lutY[i] = static_cast<uint8_t>(std::lround(val));
 		}
 
 		for (uint32_t i = 0; i < size; ++i)																		// Ultra-fast loop: Only 3 L1 cache lookups per pixel!
-		{
 			Y[i]  = lutY[Y[i]];
-			Cg[i] = lutChroma[Cg[i] + 255];																		// index shift +255
-			Co[i] = lutChroma[Co[i] + 255];																		// index shift +255
-		}
 
 		m_ms = toMS(clock::now());
 
 		Result res {.logs = {{TextCode::Metrics, {"scale Y(I)", m_ms}}}};
+		m_images[m_IDX].stamp = nextStamp();																	// stamp this manipulation
+
+		return toRGBA(res);																						// returns `Result` accordingly itself
+	}
+
+	/**
+	 * @brief Manipulates the saturation (Cg/Co [-255, 255]) of the selected image by percentually scaling the passed factor [-1.0, 1.0].
+	 * @note Incoming values are backed up by ImGui slider ranges and mustn't checked. ImGuiSliderFlags_NoInput are used !!!
+	 * @param factor the floating point factor [-1.0, 1.0] to manipute the saturation by scaling
+	 * @return `Result` {success, logs}
+	 */
+	Result ImageProcessor::setSaturation(float factor)
+	{
+		if (m_images[m_IDX].chan == 0) return Result {.logs = {{TextCode::IP_Skip_Alpha0, {}}}};				// skip manip. of fully transparent images
+
+		if (factor == 0.0f) return Result {.logs = {{TextCode::IP_Skip_Saturation, {}}}};						// => no any change in saturation
+
+		m_t_start = clock::now();
+
+		const uint32_t size	   = m_images[m_IDX].Cg.size();
+		int16_t* __restrict Cg = m_images[m_IDX].Cg.data();
+		int16_t* __restrict Co = m_images[m_IDX].Co.data();
+
+
+		if (factor == -1.0f)																					// => set each Cg/Co = 0 (black n white)
+		{
+			// memset is highly optimized via SSE/AVX2 (zeroes MBDs in nanoseconds)
+			std::memset(Cg, 0, size * sizeof(int16_t));
+			std::memset(Co, 0, size * sizeof(int16_t));
+		}
+
+		else
+		{
+			const float mult = 1.0f + factor;
+
+			int16_t lutChroma[511];																				// Combined LUT for Cg & Co (-255..255, 1024 Bytes)
+			for (int i = -255; i < 256; ++i)
+			{
+				const float val = std::clamp(static_cast<float>(i) * mult, -255.0f, 255.0f);
+				lutChroma[i + 255] = static_cast<int16_t>(std::lround(val));
+			}
+
+			for (uint32_t i = 0; i < size; ++i)																	// Ultra-fast loop: Only 2 L1 cache lookups per pixel!
+			{
+				Cg[i] = lutChroma[Cg[i] + 255];																	// index shift +255
+				Co[i] = lutChroma[Co[i] + 255];																	// index shift +255
+			}
+		}
+
+		m_ms = toMS(clock::now());
+
+		Result res {.logs = {{TextCode::Metrics, {"satur CgCo", m_ms}}}};
 		m_images[m_IDX].stamp = nextStamp();																	// stamp this manipulation
 
 		return toRGBA(res);																						// returns `Result` accordingly itself
@@ -333,13 +368,12 @@ namespace PixelStudio
 		const uint32_t size	  = m_images[m_IDX].Y.size();
 		uint8_t* __restrict Y = m_images[m_IDX].Y.data();
 
-		if (k == 0.0f)																							// => set each Y = 0.5f
+		if (k == 0.0f)																							// => set each Y = 128
 		{
 			m_t_start = clock::now();
 
 			for (uint32_t i = 0; i < size; ++i)
-				Y[i] = 127;
-			// 	Y[i] = 0.5f;																					// ******* earlier YUVA variant !!! *******
+				Y[i] = 128;
 
 			m_ms = toMS(clock::now());
 
@@ -352,18 +386,14 @@ namespace PixelStudio
 		else																									// ImGui slider ranges are safe
 		{
 			m_t_start = clock::now();
-			const float offset = ((1.0f - k) * 0.5f) * 255.0f;
-
-			// const float offset = (1.0f - k) * 0.5f;															// ******* earlier YUVA variant !!! *******
-
-			// for (uint32_t i = 0; i < size; ++i)																// ******* earlier YUVA variant !!! *******
-			// 	Y[i] = std::clamp(k * Y[i] + offset, 0.0f, 1.0f);												// ******* earlier YUVA variant !!! *******
+			const float offset = (1.0f - k) * 127.5f;
 
 			uint8_t lut[256];
 			for (int i = 0; i < 256; ++i)
 			{
-				int val = static_cast<int>(static_cast<float>(i) * k + offset);
-				lut[i] = static_cast<uint8_t>(std::clamp(val, 0, 255));
+				const float value	= static_cast<float>(i) * k + offset;
+				const float clamped = std::clamp(value, 0.0f, 255.0f);
+				lut[i] = static_cast<uint8_t>(std::lround(clamped));
 			}
 
 			for (uint32_t i = 0; i < size; ++i)
@@ -395,7 +425,6 @@ namespace PixelStudio
 
 		for (uint32_t i = 0; i < size; ++i)
 			Y[i] = 255 - Y[i];
-		//	Y[i] = 1.0f - Y[i];																					// ******* earlier YUVA variant !!! *******
 
 		m_ms = toMS(clock::now());
 
@@ -426,18 +455,21 @@ namespace PixelStudio
 		const uint32_t size	  = m_images[m_IDX].Y.size();
 		uint8_t* __restrict Y = m_images[m_IDX].Y.data();
 
-		// precalculating all 256 possible values [0, 255] once
+
+		// precalculating all 256 possible values [0, 255] once with strict double-precision clamping
 		uint8_t lut[256];
 		for (int i = 0; i < 256; ++i)
-			lut[i] = static_cast<uint8_t>(m_CDF[i] * 255.0f);
+		{
+			double val = std::clamp(m_CDF[i] * 255.0, 0.0, 255.0);
+			lut[i] = static_cast<uint8_t>(std::lround(val));
+		}
 
-		// run over 8-Bit integer table-lookups in L1-Cache
+		// run over 8-Bit integer table-lookups in L1-Cache (Ultra Fast)
 		#ifdef PARALLEL_RUN
 		#pragma omp parallel for proc_bind(close) schedule(guided, m_CHUNK_SIZE)
 		#endif
 		for (uint32_t i = 0; i < size; ++i)
 			Y[i] = lut[Y[i]];
-		//	Y[i] = static_cast<float>(m_CDF[quantize(Y[i])]);													// ******* earlier YUVA variant !!! *******
 
 		m_ms = toMS(clock::now());
 
@@ -631,7 +663,8 @@ namespace PixelStudio
 		const uint32_t size	  = m_images[m_IDX].Y.size();
 		uint8_t* __restrict A = m_images[m_IDX].A.data();
 
-		const uint8_t alpha = static_cast<uint8_t>(std::round(255.0f * val));
+		//const uint8_t alpha = static_cast<uint8_t>(std::round(255.0f * val));
+		const uint8_t alpha = static_cast<uint8_t>(std::lround(std::clamp(val * 255.0f, 0.0f, 255.0f)));
 
 		#ifdef PARALLEL_RUN
 		#pragma omp parallel for proc_bind(close) schedule(guided, (m_CHUNK_SIZE))
@@ -1409,7 +1442,7 @@ namespace PixelStudio
 		#endif
 		for (int y = 0; y < H; ++y)
 		{
-			// Y-Offset-Spannweite mit Border-Clamping
+			// Y-offset range with border clamping
 			int y0 = std::clamp(y - 2, 0, H - 1);
 			int y1 = std::clamp(y - 1, 0, H - 1);
 			int y2 = y;
@@ -1437,8 +1470,6 @@ namespace PixelStudio
 				// ======================================================================================
 				auto calcSymmetricVal = [&](const std::vector<float>& src) -> float
 				{
-					// vcFormat-format off
-					// clang-format off
 					float g0 = (src[r0 + x0] + src[r0 + x4] + src[r4 + x0] + src[r4 + x4]);						// Group 0: 4 corners (weight W0)
 					float g1 = (src[r0 + x1] + src[r0 + x3] + src[r4 + x1] + src[r4 + x3]
 							  + src[r1 + x0] + src[r1 + x4] + src[r3 + x0] + src[r3 + x4]);						// Group 1: 8 outer ring neighbors (weight W1)
@@ -1460,10 +1491,10 @@ namespace PixelStudio
 
 				m_harris.R[curr_i] = det - k_factor * (trace * trace);								// R = det(M) - k * (trace(M))^2 ==> det(M) - k * (trace * trace)
 
-				// write back final smoothed tensor vals to temp vectors --> calcSymmetricVal(..) runs on original vectors !!! -- (clamping [0.0, 1.0] for display)
-				tmpIxx[curr_i] = std::clamp(sumIxx + 0.5f, 0.0f, 1.0f);
-				tmpIyy[curr_i] = std::clamp(sumIyy + 0.5f, 0.0f, 1.0f);
-				tmpIxy[curr_i] = std::clamp(sumIxy + 0.5f, 0.0f, 1.0f);
+				// write back final smoothed tensor vals to temp vectors --> calcSymmetricVal(..) runs on original vectors !!!
+				tmpIxx[curr_i] = sumIxx;
+				tmpIyy[curr_i] = sumIyy;
+				tmpIxy[curr_i] = sumIxy;
 			}
 		}
 
@@ -1580,10 +1611,10 @@ namespace PixelStudio
 				m_harris.R[curr_i] = det - k_factor * (trace * trace);								// R = det(M) - k * (trace(M))^2 ==> det(M) - k * (trace * trace)
 
 
-				// write back final smoothed tensor vals to original vectors --> X loop is accomplished (runned on orig) !!! -- (clamping [0.0, 1.0] for display)
-				m_harris.Ixx[curr_i] = std::clamp(sumIxx + 0.5f, 0.0f, 1.0f);
-				m_harris.Iyy[curr_i] = std::clamp(sumIyy + 0.5f, 0.0f, 1.0f);
-				m_harris.Ixy[curr_i] = std::clamp(sumIxy + 0.5f, 0.0f, 1.0f);
+				// write back final smoothed tensor vals to original vectors --> X loop is accomplished (runned on orig) !!!
+				m_harris.Ixx[curr_i] = sumIxx;
+				m_harris.Iyy[curr_i] = sumIyy;
+				m_harris.Ixy[curr_i] = sumIxy;
 			}
 		}
 
@@ -1621,7 +1652,7 @@ namespace PixelStudio
 	// 	// ================================ the convolution of Tensor M =================================
 	// 	#ifdef PARALLEL_RUN
 	// 	#pragma omp parallel for default(none) shared(W, m_W, H, k_factor, GAUSS_5, tmpIxx, tmpIyy, tmpIxy)\
-	// 			proc_bind(close) schedule(guided, m_CHUNK_SIZE)
+	// 						proc_bind(close) schedule(guided, m_CHUNK_SIZE)
 	// 	#endif
 	// 	for (int y = 0; y < H; ++y)
 	// 	{

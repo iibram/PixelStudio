@@ -145,6 +145,7 @@ namespace PixelStudio
 
 		Result addIntensity(float value);
 		Result scaleIntensity(float factor);
+		Result setSaturation(float factor);
 		Result setContrast(float k);
 		Result toNegative();
 		Result applyHistogramEqualization();

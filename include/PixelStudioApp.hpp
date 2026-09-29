@@ -93,6 +93,7 @@ namespace PixelStudio
 		{
 			float addIntensity	= 0.00f;
 			float sclIntensity	= 0.00f;
+			float saturation	= 0.00f;
 			float contrast		= 1.00f;
 			float alpha			= 1.00f;
 			float threshold		= 0.50f;
